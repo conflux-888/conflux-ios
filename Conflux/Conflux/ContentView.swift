@@ -1,24 +1,40 @@
-//
-//  ContentView.swift
-//  Conflux
-//
-//  Created by Theerat Punyasit on 4/4/2569 BE.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(AuthManager.self) private var authManager
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        if authManager.isLoggedIn {
+            MainTabView()
+        } else {
+            LoginView()
         }
-        .padding()
+    }
+}
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            Tab("Map", systemImage: "map.fill") {
+                ConfluxMapView()
+            }
+
+            Tab("Events", systemImage: "newspaper.fill") {
+                EventsListView()
+            }
+
+            Tab("Report", systemImage: "plus.circle.fill") {
+                ReportFormView()
+            }
+
+            Tab("Profile", systemImage: "person.fill") {
+                ProfileView()
+            }
+        }
     }
 }
 
 #Preview {
     ContentView()
+        .environment(AuthManager())
 }

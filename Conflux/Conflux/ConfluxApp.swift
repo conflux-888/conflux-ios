@@ -1,17 +1,14 @@
-//
-//  ConfluxApp.swift
-//  Conflux
-//
-//  Created by Theerat Punyasit on 4/4/2569 BE.
-//
-
 import SwiftUI
 
 @main
 struct ConfluxApp: App {
+    @State private var authManager = AuthManager()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(authManager)
+                .preferredColorScheme(authManager.appColorScheme.colorScheme)
         }
     }
 }
