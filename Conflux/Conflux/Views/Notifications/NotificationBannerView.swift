@@ -7,11 +7,11 @@ struct NotificationBannerView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 // Severity/type bar
                 RoundedRectangle(cornerRadius: 1)
                     .fill(notification.isNearby ? Color.cxCritical : Color.cxAccent)
-                    .frame(width: 4)
+                    .frame(width: 3, height: 50)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
@@ -49,19 +49,19 @@ struct NotificationBannerView: View {
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
             .background(Color.cxSurface)
             .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
             .overlay(
                 RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
                     .stroke(notification.isNearby ? Color.cxCritical.opacity(0.4) : Color.cxBorder, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
-            .padding(.horizontal, 12)
+            .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, 16)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
