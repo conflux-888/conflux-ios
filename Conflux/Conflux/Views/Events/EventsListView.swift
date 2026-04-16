@@ -109,6 +109,11 @@ struct EventsListView: View {
             .background(Color.cxBackground)
             .navigationTitle("EVENTS")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NotificationBellView()
+                }
+            }
             .searchable(text: $searchText, prompt: "Search events, countries...")
             .tint(.cxAccent)
             .sheet(item: $selectedEvent) { event in

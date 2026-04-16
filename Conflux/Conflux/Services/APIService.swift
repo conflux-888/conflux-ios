@@ -226,4 +226,68 @@ final class APIService {
         if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
         return try decode(PaginatedResponse<DailySummary>.self, from: data)
     }
+
+    // MARK: - Preferences
+
+    func getPreferences(token: String) async throws -> UserPreferences {
+        let req = try request(path: "/preferences", token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        let response = try decode(APIResponse<UserPreferences>.self, from: data)
+        if let result = response.data { return result }
+        throw ServiceError.serverError(response.error?.message ?? "Failed to load preferences")
+    }
+
+    func updatePreferences(_ prefs: UpdatePreferencesRequest, token: String) async throws -> UserPreferences {
+        let body = try JSONEncoder().encode(prefs)
+        let req = try request(path: "/preferences", method: "PUT", body: body, token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        let response = try decode(APIResponse<UserPreferences>.self, from: data)
+        if let result = response.data { return result }
+        throw ServiceError.serverError(response.error?.message ?? "Failed to update preferences")
+    }
+
+    func updateLocation(latitude: Double, longitude: Double, token: String) async throws {
+        struct LocationBody: Encodable { let latitude: Double; let longitude: Double }
+        let body = try JSONEncoder().encode(LocationBody(latitude: latitude, longitude: longitude))
+        let req = try request(path: "/preferences/location", method: "PUT", body: body, token: token)
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+    }
+
+    // MARK: - Notifications
+
+    func getNotifications(unreadOnly: Bool = false, page: Int = 1, limit: Int = 20, token: String) async throws -> PaginatedResponse<AppNotification> {
+        var comps = URLComponents(string: baseURL + "/notifications/me")!
+        comps.queryItems = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+            URLQueryItem(name: "unread_only", value: unreadOnly ? "true" : "false")
+        ]
+        let req = request(components: comps, token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        return try decode(PaginatedResponse<AppNotification>.self, from: data)
+    }
+
+    func getUnreadCount(token: String) async throws -> Int {
+        let req = try request(path: "/notifications/me/unread-count", token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        let response = try decode(APIResponse<UnreadCountResponse>.self, from: data)
+        return response.data?.unreadCount ?? 0
+    }
+
+    func markNotificationAsRead(id: String, token: String) async throws {
+        let req = try request(path: "/notifications/\(id)/read", method: "POST", token: token)
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+    }
+
+    func markAllNotificationsAsRead(token: String) async throws {
+        let req = try request(path: "/notifications/read-all", method: "POST", token: token)
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+    }
 }

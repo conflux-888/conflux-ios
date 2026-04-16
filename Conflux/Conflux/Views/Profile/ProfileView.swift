@@ -109,6 +109,14 @@ struct ProfileView: View {
                             .foregroundStyle(.cxText)
                     }
                     .listRowBackground(Color.cxSurface)
+
+                    NavigationLink {
+                        NotificationSettingsView()
+                    } label: {
+                        Label("Notification Settings", systemImage: "bell.badge")
+                            .foregroundStyle(.cxText)
+                    }
+                    .listRowBackground(Color.cxSurface)
                 } header: {
                     Text("MY ACTIVITY")
                         .font(.cxLabel)

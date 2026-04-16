@@ -68,6 +68,11 @@ struct DailySummaryView: View {
             .background(Color.cxBackground)
             .navigationTitle("INTEL BRIEFING")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NotificationBellView()
+                }
+            }
             .tint(.cxAccent)
             .task {
                 buildDates()
