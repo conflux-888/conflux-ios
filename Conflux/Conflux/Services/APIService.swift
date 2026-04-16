@@ -190,4 +190,40 @@ final class APIService {
         if status == 401 { throw ServiceError.unauthorized }
         if status == 404 { throw ServiceError.notFound }
     }
+
+    // MARK: - Summaries
+
+    func getLatestSummary(token: String) async throws -> DailySummary {
+        let req = try request(path: "/summaries/latest", token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        if (resp as? HTTPURLResponse)?.statusCode == 404 { throw ServiceError.notFound }
+        let response = try decode(APIResponse<DailySummary>.self, from: data)
+        if let result = response.data { return result }
+        throw ServiceError.serverError(response.error?.message ?? "No summary available")
+    }
+
+    func getSummary(date: String, token: String) async throws -> DailySummary {
+        let req = try request(path: "/summaries/\(date)", token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        if (resp as? HTTPURLResponse)?.statusCode == 404 { throw ServiceError.notFound }
+        let response = try decode(APIResponse<DailySummary>.self, from: data)
+        if let result = response.data { return result }
+        throw ServiceError.serverError(response.error?.message ?? "Summary not found")
+    }
+
+    func getSummaries(from: String? = nil, to: String? = nil, limit: Int = 7, token: String) async throws -> PaginatedResponse<DailySummary> {
+        var comps = URLComponents(string: baseURL + "/summaries")!
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        if let from { items.append(URLQueryItem(name: "from", value: from)) }
+        if let to { items.append(URLQueryItem(name: "to", value: to)) }
+        comps.queryItems = items
+        let req = request(components: comps, token: token)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
+        return try decode(PaginatedResponse<DailySummary>.self, from: data)
+    }
 }
