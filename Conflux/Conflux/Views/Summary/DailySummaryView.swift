@@ -13,6 +13,8 @@ struct DailySummaryView: View {
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
         return f
     }()
 
@@ -230,18 +232,13 @@ struct DailySummaryView: View {
         summary = nil
 
         let dateString = dateFormatter.string(from: date)
-        print("[Intel] loadSummary date=\(date) → dateString=\(dateString)")
         do {
             summary = try await APIService.shared.getSummary(date: dateString, token: token)
-            print("[Intel] loadSummary SUCCESS status=\(summary?.status ?? "nil")")
         } catch ServiceError.notFound {
-            print("[Intel] loadSummary 404 for \(dateString)")
             errorMessage = "No briefing available for this date."
         } catch let error as ServiceError {
-            print("[Intel] loadSummary ServiceError: \(error.errorDescription ?? "unknown")")
             errorMessage = error.errorDescription
         } catch {
-            print("[Intel] loadSummary error: \(error)")
             errorMessage = error.localizedDescription
         }
         isLoading = false

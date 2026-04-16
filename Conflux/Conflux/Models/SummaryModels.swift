@@ -45,9 +45,13 @@ struct DailySummary: Codable, Identifiable {
     var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         guard let date = formatter.date(from: summaryDate) else { return summaryDate }
         let display = DateFormatter()
         display.dateFormat = "MMM d, yyyy"
+        display.locale = Locale(identifier: "en_US_POSIX")
+        display.calendar = Calendar(identifier: .gregorian)
         return display.string(from: date).uppercased()
     }
 
