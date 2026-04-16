@@ -23,6 +23,11 @@ class AppLocationManager: NSObject, CLLocationManagerDelegate {
     func startMonitoring(token: String) {
         self.token = token
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            // Use cached location immediately (no GPS wait)
+            if let cached = manager.location {
+                lastLocation = cached.coordinate
+            }
+            // Then request fresh update in background
             manager.requestLocation()
             manager.startMonitoringSignificantLocationChanges()
         } else {
