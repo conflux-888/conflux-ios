@@ -1,0 +1,622 @@
+import SwiftUI
+
+struct DailySummaryView: View {
+    @Environment(AuthManager.self) private var authManager
+
+    @State private var summary: DailySummary?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    @State private var selectedDate: Date = Date()
+    @State private var dates: [Date] = []
+    @State private var selectedTopEvent: TopEvent?
+
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
+        return f
+    }()
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Date picker strip
+                DatePickerStrip(
+                    dates: dates,
+                    selectedDate: $selectedDate,
+                    onChange: { date in
+                        Task { await loadSummary(for: date) }
+                    }
+                )
+                .background(Color.cxBackgroundPure)
+
+                Rectangle()
+                    .fill(Color.cxBorder)
+                    .frame(height: 1)
+
+                // Content
+                Group {
+                    if isLoading && summary == nil {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .tint(.cxAccent)
+                            Text("LOADING BRIEFING")
+                                .font(.cxData)
+                                .foregroundStyle(.cxTextSecondary)
+                                .tracking(1)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let error = errorMessage, summary == nil {
+                        ContentUnavailableView {
+                            Label("Briefing Unavailable", systemImage: "doc.text.magnifyingglass")
+                                .foregroundStyle(.cxAccent)
+                        } description: {
+                            Text(error)
+                                .foregroundStyle(.cxTextSecondary)
+                        } actions: {
+                            Button("Retry") {
+                                Task { await loadSummary(for: selectedDate) }
+                            }
+                            .foregroundStyle(.cxAccent)
+                        }
+                    } else if let summary {
+                        summaryContent(summary)
+                    }
+                }
+            }
+            .background(Color.cxBackground)
+            .navigationTitle("INTEL BRIEFING")
+            .navigationBarTitleDisplayMode(.inline)
+            .tint(.cxAccent)
+            .task {
+                buildDates()
+                await loadLatest()
+            }
+        }
+    }
+
+    // MARK: - Summary Content
+
+    private func summaryContent(_ summary: DailySummary) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Date + Event Count bar
+                SummaryDateBar(summary: summary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                // Severity breakdown bar
+                SeverityBarView(breakdown: summary.severityBreakdown)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                // Headline
+                Text(summary.title)
+                    .font(.system(.title2, design: .serif).weight(.bold))
+                    .foregroundStyle(.cxText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+
+                // Article body
+                Text(summary.content)
+                    .font(.system(.body, design: .default))
+                    .foregroundStyle(.cxText.opacity(0.9))
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                // Top Events
+                if let topEvents = summary.topEvents, !topEvents.isEmpty {
+                    sectionHeader("TOP EVENTS", icon: "flame.fill")
+                        .padding(.top, 24)
+
+                    VStack(spacing: 6) {
+                        ForEach(topEvents) { event in
+                            Button {
+                                selectedTopEvent = event
+                            } label: {
+                                TopEventCard(event: event)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                }
+
+                // Footer metadata
+                summaryFooter(summary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 24)
+            }
+        }
+        .refreshable { await loadLatest() }
+        .sheet(item: $selectedTopEvent) { event in
+            TopEventDetailSheet(event: event)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.cxBackground)
+        }
+    }
+
+    // MARK: - Section Header
+
+    private func sectionHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundStyle(.cxAccent)
+            Text(title)
+                .font(.cxLabel)
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(1.5)
+            Rectangle()
+                .fill(Color.cxBorder)
+                .frame(height: 1)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Footer
+
+    private func summaryFooter(_ summary: DailySummary) -> some View {
+        HStack {
+            HStack(spacing: 4) {
+                Image(systemName: "clock")
+                    .font(.system(size: 9))
+                Text("GENERATED \(summary.formattedGeneratedTime)")
+                    .font(.cxData)
+            }
+            .foregroundStyle(.cxTextTertiary)
+
+            Spacer()
+
+            if let model = summary.model {
+                Text(model.uppercased())
+                    .font(.cxData)
+                    .foregroundStyle(.cxTextTertiary)
+            }
+        }
+        .padding(CXConstants.cardPadding)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
+    }
+
+    // MARK: - Data
+
+    private func buildDates() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
+        selectedDate = today
+    }
+
+    private func loadLatest() async {
+        guard let token = authManager.token else {
+            errorMessage = "Authentication required. Please log in again."
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        summary = nil
+        do {
+            let result = try await APIService.shared.getLatestSummary(token: token)
+            summary = result
+            // Sync date picker to match the loaded summary's date
+            if let date = dateFormatter.date(from: result.summaryDate) {
+                selectedDate = date
+            }
+        } catch let error as ServiceError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func loadSummary(for date: Date) async {
+        guard let token = authManager.token else {
+            errorMessage = "Authentication required. Please log in again."
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        summary = nil
+
+        let dateString = dateFormatter.string(from: date)
+        do {
+            summary = try await APIService.shared.getSummary(date: dateString, token: token)
+        } catch ServiceError.notFound {
+            errorMessage = "No briefing available for this date."
+        } catch let error as ServiceError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+}
+
+// MARK: - Date Picker Strip
+
+struct DatePickerStrip: View {
+    let dates: [Date]
+    @Binding var selectedDate: Date
+    let onChange: (Date) -> Void
+
+    private let calendar = Calendar.current
+
+    private let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+
+    private let weekdayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f
+    }()
+
+    private let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+
+    private var isToday: (Date) -> Bool {
+        { calendar.isDateInToday($0) }
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(dates.reversed(), id: \.self) { date in
+                        let selected = calendar.isDate(date, inSameDayAs: selectedDate)
+
+                        Button {
+                            selectedDate = date
+                            onChange(date)
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text(weekdayFormatter.string(from: date).uppercased())
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(selected ? .cxAccent : .cxTextTertiary)
+                                    .tracking(0.5)
+
+                                Text(dayFormatter.string(from: date))
+                                    .font(.cxMono)
+                                    .foregroundStyle(selected ? .cxAccent : .cxText)
+
+                                Text(monthFormatter.string(from: date).uppercased())
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(selected ? .cxAccent : .cxTextTertiary)
+                                    .tracking(0.5)
+                            }
+                            .frame(width: 44, height: 52)
+                            .background(selected ? Color.cxAccent.opacity(0.12) : Color.cxSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                    .stroke(
+                                        selected ? Color.cxAccent.opacity(0.5) : Color.cxBorder,
+                                        lineWidth: selected ? 1.5 : CXConstants.borderWidth
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .id(date)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .onAppear {
+                proxy.scrollTo(selectedDate, anchor: .trailing)
+            }
+        }
+    }
+}
+
+// MARK: - Date Bar
+
+struct SummaryDateBar: View {
+    let summary: DailySummary
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.cxAccent)
+                Text(summary.formattedDate)
+                    .font(.cxMono)
+                    .foregroundStyle(.cxText)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 4) {
+                Text("\(summary.eventCount)")
+                    .font(.cxMono)
+                    .foregroundStyle(.cxAccent)
+                Text("EVT")
+                    .font(.cxLabel)
+                    .foregroundStyle(.cxTextTertiary)
+            }
+            .fixedSize()
+
+            if let incidents = summary.incidentCount {
+                Rectangle()
+                    .fill(Color.cxBorder)
+                    .frame(width: 1, height: 12)
+
+                HStack(spacing: 4) {
+                    Text("\(incidents)")
+                        .font(.cxMono)
+                        .foregroundStyle(.cxAccent)
+                    Text("INC")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                }
+                .fixedSize()
+            }
+        }
+    }
+}
+
+// MARK: - Severity Breakdown Bar
+
+struct SeverityBarView: View {
+    let breakdown: SeverityBreakdown
+
+    private var total: CGFloat { CGFloat(max(breakdown.total, 1)) }
+    private var critFrac: CGFloat { CGFloat(breakdown.critical) / total }
+    private var highFrac: CGFloat { CGFloat(breakdown.high) / total }
+    private var medFrac: CGFloat { CGFloat(breakdown.medium) / total }
+    private var lowFrac: CGFloat { CGFloat(breakdown.low) / total }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Stacked bar
+            GeometryReader { geo in
+                let w = geo.size.width
+                HStack(spacing: 1) {
+                    Rectangle().fill(Color.cxCritical).frame(width: max(w * critFrac, 0))
+                    Rectangle().fill(Color.cxHigh).frame(width: max(w * highFrac, 0))
+                    Rectangle().fill(Color.cxMedium).frame(width: max(w * medFrac, 0))
+                    Rectangle().fill(Color.cxLow).frame(width: max(w * lowFrac, 0))
+                }
+            }
+            .frame(height: 6)
+            .clipShape(RoundedRectangle(cornerRadius: 1))
+
+            // Labels — use same proportional fractions to align under bar
+            GeometryReader { geo in
+                let w = geo.size.width
+                HStack(spacing: 1) {
+                    severityLabel("\(breakdown.critical)", "CRIT", .cxCritical)
+                        .frame(width: max(w * critFrac, 0))
+                    severityLabel("\(breakdown.high)", "HIGH", .cxHigh)
+                        .frame(width: max(w * highFrac, 0))
+                    severityLabel("\(breakdown.medium)", "MED", .cxMedium)
+                        .frame(width: max(w * medFrac, 0))
+                    severityLabel("\(breakdown.low)", "LOW", .cxLow)
+                        .frame(width: max(w * lowFrac, 0))
+                }
+            }
+            .frame(height: 16)
+        }
+        .padding(CXConstants.cardPadding)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
+    }
+
+    private func severityLabel(_ count: String, _ label: String, _ color: Color) -> some View {
+        HStack(spacing: 2) {
+            Text(count)
+                .font(.cxMono)
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 7, weight: .semibold))
+                .foregroundStyle(.cxTextTertiary)
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+}
+
+// MARK: - Top Event Card
+
+struct TopEventCard: View {
+    let event: TopEvent
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            // Severity bar
+            RoundedRectangle(cornerRadius: 1)
+                .fill(event.severityColor)
+                .frame(width: 3)
+                .frame(maxHeight: .infinity)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(event.severityLabel)
+                        .font(.cxData)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(event.severityColor.opacity(0.1))
+                        .foregroundStyle(event.severityColor)
+                        .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
+
+                    Text(event.country)
+                        .font(.cxMono)
+                        .foregroundStyle(.cxAccent)
+
+                    Text(event.location)
+                        .font(.cxData)
+                        .foregroundStyle(.cxTextSecondary)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+
+                Text(event.title)
+                    .font(.cxBody)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.cxText)
+                    .lineLimit(1)
+
+                Text(event.description)
+                    .font(.cxData)
+                    .foregroundStyle(.cxTextSecondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
+    }
+}
+
+// MARK: - Top Event Detail Sheet
+
+struct TopEventDetailSheet: View {
+    let event: TopEvent
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                // Severity + Location header
+                HStack(spacing: 8) {
+                    Text(event.severityLabel)
+                        .font(.cxData)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(event.severityColor.opacity(0.1))
+                        .foregroundStyle(event.severityColor)
+                        .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius)
+                                .stroke(event.severityColor.opacity(0.4), lineWidth: 1)
+                        )
+
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Title
+                Text(event.title)
+                    .font(.cxTitle)
+                    .foregroundStyle(.cxText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                Rectangle()
+                    .fill(Color.cxBorder)
+                    .frame(height: 1)
+                    .padding(.top, 16)
+
+                // Info grid
+                VStack(spacing: 1) {
+                    infoRow(icon: "flag.fill", label: "COUNTRY", value: event.country)
+                    infoRow(icon: "mappin.circle.fill", label: "LOCATION", value: event.location)
+                }
+                .background(Color.cxBorder)
+                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                        .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Description
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("ANALYSIS", systemImage: "text.alignleft")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+
+                    Text(event.description)
+                        .font(.cxBody)
+                        .foregroundStyle(.cxText)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Source note
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9))
+                    Text("AI-GENERATED SUMMARY")
+                        .font(.cxLabel)
+                        .tracking(1)
+                }
+                .foregroundStyle(.cxTextTertiary)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                Spacer()
+            }
+            .background(Color.cxBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(.cxAccent)
+                }
+            }
+        }
+    }
+
+    private func infoRow(icon: String, label: String, value: String) -> some View {
+        HStack {
+            Label(label, systemImage: icon)
+                .font(.cxLabel)
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
+            Spacer()
+            Text(value)
+                .font(.cxMono)
+                .foregroundStyle(.cxAccent)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.cxSurface)
+    }
+}
+
+#Preview {
+    DailySummaryView()
+        .environment(AuthManager())
+}

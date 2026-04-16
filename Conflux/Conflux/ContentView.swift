@@ -27,6 +27,10 @@ struct MainTabView: View {
                 ReportFormView()
             }
 
+            Tab("Intel", systemImage: "doc.text") {
+                DailySummaryView()
+            }
+
             Tab("Profile", systemImage: "person") {
                 ProfileView()
             }
