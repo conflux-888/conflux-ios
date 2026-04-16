@@ -315,9 +315,11 @@ struct EventPreviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 6) {
                 Label(severity.displayName.uppercased(), systemImage: "flame.fill")
                     .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(severity.color.opacity(0.1))
@@ -326,6 +328,8 @@ struct EventPreviewCard: View {
 
                 Label("USER REPORT", systemImage: "person.fill")
                     .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(Color.cxSourceUser.opacity(0.1))

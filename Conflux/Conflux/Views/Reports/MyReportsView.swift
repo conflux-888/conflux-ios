@@ -117,9 +117,11 @@ struct UserReportRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 6) {
                 Label(report.severityLabel.uppercased(), systemImage: report.severityIcon)
                     .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(report.severityColor.opacity(0.1))
@@ -128,17 +130,21 @@ struct UserReportRow: View {
 
                 Label(report.eventTypeDisplayName.uppercased(), systemImage: "tag.fill")
                     .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(Color.cxSourceUser.opacity(0.1))
                     .foregroundStyle(.cxSourceUser)
                     .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 Text(report.relativeDate)
                     .font(.cxMono)
                     .foregroundStyle(.cxTextTertiary)
+                    .lineLimit(1)
+                    .layoutPriority(-1)
             }
 
             Text(report.title)

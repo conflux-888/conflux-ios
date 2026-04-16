@@ -15,6 +15,8 @@ struct EventDetailSheet: View {
                             // Severity badge
                             Label(event.severityLabel.uppercased(), systemImage: event.severityIcon)
                                 .font(.cxData)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(event.severityColor.opacity(0.1))
@@ -28,6 +30,8 @@ struct EventDetailSheet: View {
                             // Source badge
                             Label(event.sourceDisplayName.uppercased(), systemImage: event.sourceIcon)
                                 .font(.cxData)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(event.sourceColor.opacity(0.1))

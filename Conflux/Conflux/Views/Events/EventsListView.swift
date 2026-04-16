@@ -235,6 +235,8 @@ struct EventRowView: View {
                         // Severity
                         Label(event.severityLabel.uppercased(), systemImage: event.severityIcon)
                             .font(.cxData)
+                            .lineLimit(1)
+                            .fixedSize()
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(event.severityColor.opacity(0.1))
@@ -244,17 +246,21 @@ struct EventRowView: View {
                         // Source
                         Text(event.sourceDisplayName.uppercased())
                             .font(.cxData)
+                            .lineLimit(1)
+                            .fixedSize()
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(event.sourceColor.opacity(0.1))
                             .foregroundStyle(event.sourceColor)
                             .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                        Spacer()
+                        Spacer(minLength: 4)
 
                         Text(event.relativeDate)
                             .font(.cxMono)
                             .foregroundStyle(.cxTextTertiary)
+                            .lineLimit(1)
+                            .layoutPriority(-1)
                     }
 
                     // Title
