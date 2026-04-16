@@ -54,7 +54,7 @@ struct ConfluxMapView: View {
                 }
             }
             .mapStyle(.imagery(elevation: .flat))
-            .onMapCameraChange(frequency: .continuous) { context in
+            .onMapCameraChange { context in
                 currentSpan = context.region.span
             }
             .ignoresSafeArea(edges: .all)
