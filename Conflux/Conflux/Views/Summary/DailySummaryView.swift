@@ -333,29 +333,29 @@ struct SummaryDateBar: View {
     let summary: DailySummary
 
     var body: some View {
-        HStack {
-            HStack(spacing: 6) {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 Image(systemName: "calendar")
                     .font(.system(size: 10))
                     .foregroundStyle(.cxAccent)
                 Text(summary.formattedDate)
                     .font(.cxMono)
                     .foregroundStyle(.cxText)
+                    .lineLimit(1)
+                    .fixedSize()
             }
 
-            Rectangle()
-                .fill(Color.cxBorder)
-                .frame(height: 1)
+            Spacer(minLength: 0)
 
             HStack(spacing: 4) {
                 Text("\(summary.eventCount)")
                     .font(.cxMono)
                     .foregroundStyle(.cxAccent)
-                Text("EVENTS")
+                Text("EVT")
                     .font(.cxLabel)
                     .foregroundStyle(.cxTextTertiary)
-                    .tracking(1)
             }
+            .fixedSize()
 
             if let incidents = summary.incidentCount {
                 Rectangle()
@@ -366,11 +366,11 @@ struct SummaryDateBar: View {
                     Text("\(incidents)")
                         .font(.cxMono)
                         .foregroundStyle(.cxAccent)
-                    Text("INCIDENTS")
+                    Text("INC")
                         .font(.cxLabel)
                         .foregroundStyle(.cxTextTertiary)
-                        .tracking(1)
                 }
+                .fixedSize()
             }
         }
     }
@@ -381,33 +381,42 @@ struct SummaryDateBar: View {
 struct SeverityBarView: View {
     let breakdown: SeverityBreakdown
 
+    private var total: CGFloat { CGFloat(max(breakdown.total, 1)) }
+    private var critFrac: CGFloat { CGFloat(breakdown.critical) / total }
+    private var highFrac: CGFloat { CGFloat(breakdown.high) / total }
+    private var medFrac: CGFloat { CGFloat(breakdown.medium) / total }
+    private var lowFrac: CGFloat { CGFloat(breakdown.low) / total }
+
     var body: some View {
         VStack(spacing: 6) {
             // Stacked bar
             GeometryReader { geo in
-                let total = max(breakdown.total, 1)
                 let w = geo.size.width
-
                 HStack(spacing: 1) {
-                    barSegment(width: w * CGFloat(breakdown.critical) / CGFloat(total), color: .cxCritical)
-                    barSegment(width: w * CGFloat(breakdown.high) / CGFloat(total), color: .cxHigh)
-                    barSegment(width: w * CGFloat(breakdown.medium) / CGFloat(total), color: .cxMedium)
-                    barSegment(width: w * CGFloat(breakdown.low) / CGFloat(total), color: .cxLow)
+                    Rectangle().fill(Color.cxCritical).frame(width: max(w * critFrac, 0))
+                    Rectangle().fill(Color.cxHigh).frame(width: max(w * highFrac, 0))
+                    Rectangle().fill(Color.cxMedium).frame(width: max(w * medFrac, 0))
+                    Rectangle().fill(Color.cxLow).frame(width: max(w * lowFrac, 0))
                 }
             }
             .frame(height: 6)
             .clipShape(RoundedRectangle(cornerRadius: 1))
 
-            // Labels
-            HStack(spacing: 0) {
-                severityLabel("\(breakdown.critical)", "CRIT", .cxCritical)
-                Spacer()
-                severityLabel("\(breakdown.high)", "HIGH", .cxHigh)
-                Spacer()
-                severityLabel("\(breakdown.medium)", "MED", .cxMedium)
-                Spacer()
-                severityLabel("\(breakdown.low)", "LOW", .cxLow)
+            // Labels — use same proportional fractions to align under bar
+            GeometryReader { geo in
+                let w = geo.size.width
+                HStack(spacing: 1) {
+                    severityLabel("\(breakdown.critical)", "CRIT", .cxCritical)
+                        .frame(width: max(w * critFrac, 0))
+                    severityLabel("\(breakdown.high)", "HIGH", .cxHigh)
+                        .frame(width: max(w * highFrac, 0))
+                    severityLabel("\(breakdown.medium)", "MED", .cxMedium)
+                        .frame(width: max(w * medFrac, 0))
+                    severityLabel("\(breakdown.low)", "LOW", .cxLow)
+                        .frame(width: max(w * lowFrac, 0))
+                }
             }
+            .frame(height: 16)
         }
         .padding(CXConstants.cardPadding)
         .background(Color.cxSurface)
@@ -418,22 +427,17 @@ struct SeverityBarView: View {
         )
     }
 
-    private func barSegment(width: CGFloat, color: Color) -> some View {
-        Rectangle()
-            .fill(color)
-            .frame(width: max(width, 0))
-    }
-
     private func severityLabel(_ count: String, _ label: String, _ color: Color) -> some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
             Text(count)
                 .font(.cxMono)
                 .foregroundStyle(color)
             Text(label)
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 7, weight: .semibold))
                 .foregroundStyle(.cxTextTertiary)
-                .tracking(0.5)
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 }
 
