@@ -8,6 +8,7 @@ struct DailySummaryView: View {
     @State private var errorMessage: String?
     @State private var selectedDate: Date = Date()
     @State private var dates: [Date] = []
+    @State private var selectedTopEvent: TopEvent?
 
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -69,7 +70,7 @@ struct DailySummaryView: View {
             .tint(.cxAccent)
             .task {
                 buildDates()
-                await loadSummary(for: selectedDate)
+                await loadLatest()
             }
         }
     }
@@ -113,7 +114,12 @@ struct DailySummaryView: View {
 
                     VStack(spacing: 6) {
                         ForEach(topEvents) { event in
-                            TopEventCard(event: event)
+                            Button {
+                                selectedTopEvent = event
+                            } label: {
+                                TopEventCard(event: event)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -127,7 +133,13 @@ struct DailySummaryView: View {
                     .padding(.bottom, 24)
             }
         }
-        .refreshable { await loadSummary(for: selectedDate) }
+        .refreshable { await loadLatest() }
+        .sheet(item: $selectedTopEvent) { event in
+            TopEventDetailSheet(event: event)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.cxBackground)
+        }
     }
 
     // MARK: - Section Header
@@ -184,6 +196,29 @@ struct DailySummaryView: View {
         let today = calendar.startOfDay(for: Date())
         dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
         selectedDate = today
+    }
+
+    private func loadLatest() async {
+        guard let token = authManager.token else {
+            errorMessage = "Authentication required. Please log in again."
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        summary = nil
+        do {
+            let result = try await APIService.shared.getLatestSummary(token: token)
+            summary = result
+            // Sync date picker to match the loaded summary's date
+            if let date = dateFormatter.date(from: result.summaryDate) {
+                selectedDate = date
+            }
+        } catch let error as ServiceError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
     }
 
     private func loadSummary(for date: Date) async {
@@ -458,6 +493,121 @@ struct TopEventCard: View {
             RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
                 .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
         )
+    }
+}
+
+// MARK: - Top Event Detail Sheet
+
+struct TopEventDetailSheet: View {
+    let event: TopEvent
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                // Severity + Location header
+                HStack(spacing: 8) {
+                    Text(event.severityLabel)
+                        .font(.cxData)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(event.severityColor.opacity(0.1))
+                        .foregroundStyle(event.severityColor)
+                        .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius)
+                                .stroke(event.severityColor.opacity(0.4), lineWidth: 1)
+                        )
+
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Title
+                Text(event.title)
+                    .font(.cxTitle)
+                    .foregroundStyle(.cxText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+
+                Rectangle()
+                    .fill(Color.cxBorder)
+                    .frame(height: 1)
+                    .padding(.top, 16)
+
+                // Info grid
+                VStack(spacing: 1) {
+                    infoRow(icon: "flag.fill", label: "COUNTRY", value: event.country)
+                    infoRow(icon: "mappin.circle.fill", label: "LOCATION", value: event.location)
+                }
+                .background(Color.cxBorder)
+                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                        .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Description
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("ANALYSIS", systemImage: "text.alignleft")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+
+                    Text(event.description)
+                        .font(.cxBody)
+                        .foregroundStyle(.cxText)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Source note
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9))
+                    Text("AI-GENERATED SUMMARY")
+                        .font(.cxLabel)
+                        .tracking(1)
+                }
+                .foregroundStyle(.cxTextTertiary)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                Spacer()
+            }
+            .background(Color.cxBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(.cxAccent)
+                }
+            }
+        }
+    }
+
+    private func infoRow(icon: String, label: String, value: String) -> some View {
+        HStack {
+            Label(label, systemImage: icon)
+                .font(.cxLabel)
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
+            Spacer()
+            Text(value)
+                .font(.cxMono)
+                .foregroundStyle(.cxAccent)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.cxSurface)
     }
 }
 

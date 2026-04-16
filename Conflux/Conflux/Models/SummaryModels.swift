@@ -69,8 +69,8 @@ struct DailySummary: Codable, Identifiable {
 
 // MARK: - Top Event
 
-struct TopEvent: Codable, Identifiable {
-    var id: String { title + country }
+struct TopEvent: Codable, Identifiable, Hashable {
+    var id: String { title + country + location }
     let title: String
     let severity: String
     let country: String
