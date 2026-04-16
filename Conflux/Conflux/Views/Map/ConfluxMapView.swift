@@ -151,30 +151,47 @@ struct ConfluxMapView: View {
         .onChange(of: severityFilter) { _, _ in Task { await loadEvents() } }
     }
 
-    // MARK: - Filter Bar (single compact row)
+    // MARK: - Filter Bar
 
     private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 5) {
-                ForEach(SourceFilter.allCases) { filter in
-                    SourceChip(filter: filter, isSelected: sourceFilter == filter) {
-                        sourceFilter = filter
+        VStack(spacing: 0) {
+            // Source row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SOURCE")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SourceFilter.allCases) { filter in
+                        SourceChip(filter: filter, isSelected: sourceFilter == filter) {
+                            sourceFilter = filter
+                        }
                     }
                 }
-
-                Rectangle()
-                    .fill(Color.cxTextTertiary.opacity(0.3))
-                    .frame(width: 1, height: 16)
-                    .padding(.horizontal, 2)
-
-                ForEach(SeverityFilter.allCases) { filter in
-                    SeverityChip(filter: filter, isSelected: severityFilter == filter) {
-                        severityFilter = filter
-                    }
-                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+
+            Rectangle()
+                .fill(Color.cxBorder)
+                .frame(height: 1)
+
+            // Severity row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SEVERITY")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SeverityFilter.allCases) { filter in
+                        SeverityChip(filter: filter, isSelected: severityFilter == filter) {
+                            severityFilter = filter
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+            }
         }
     }
 
