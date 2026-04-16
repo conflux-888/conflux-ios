@@ -55,7 +55,12 @@ struct ConfluxMapView: View {
             .mapStyle(.imagery(elevation: .flat))
             .mapControls {
                 MapCompass()
+                    .mapControlVisibility(.visible)
                 MapScaleView()
+                    .mapControlVisibility(.visible)
+            }
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: 80)
             }
             .ignoresSafeArea(edges: .all)
 
