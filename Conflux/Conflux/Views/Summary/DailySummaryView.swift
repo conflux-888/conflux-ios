@@ -4,7 +4,7 @@ struct DailySummaryView: View {
     @Environment(AuthManager.self) private var authManager
 
     @State private var summary: DailySummary?
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var errorMessage: String?
 
     var body: some View {
@@ -149,7 +149,10 @@ struct DailySummaryView: View {
     // MARK: - Data
 
     private func loadLatest() async {
-        guard let token = authManager.token else { return }
+        guard let token = authManager.token else {
+            errorMessage = "Authentication required. Please log in again."
+            return
+        }
         isLoading = true
         errorMessage = nil
         do {
