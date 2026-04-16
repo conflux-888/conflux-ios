@@ -146,7 +146,16 @@ struct ConfluxMapView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.cxBackground)
         }
-        .task { await loadEvents() }
+        .task {
+            await loadEvents()
+            // Center on user location (~500km view)
+            if let coord = locationManager.lastLocation {
+                position = .region(MKCoordinateRegion(
+                    center: coord,
+                    span: MKCoordinateSpan(latitudeDelta: 5, longitudeDelta: 5)
+                ))
+            }
+        }
         .onChange(of: sourceFilter) { _, _ in Task { await loadEvents() } }
         .onChange(of: severityFilter) { _, _ in Task { await loadEvents() } }
     }
