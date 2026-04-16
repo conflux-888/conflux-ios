@@ -34,12 +34,14 @@ struct EventsListView: View {
             VStack(spacing: 0) {
                 // Filter bar
                 filterBar
-                    .background(.bar)
+                    .background(Color.cxBackgroundPure)
 
                 // Content
                 if isLoading && events.isEmpty {
                     Spacer()
-                    ProgressView("Loading events…")
+                    ProgressView("Loading events...")
+                        .tint(.cxAccent)
+                        .foregroundStyle(.cxTextSecondary)
                     Spacer()
                 } else if let error = errorMessage, events.isEmpty {
                     Spacer()
@@ -49,6 +51,7 @@ struct EventsListView: View {
                         Text(error)
                     } actions: {
                         Button("Retry") { Task { await refresh() } }
+                            .foregroundStyle(.cxAccent)
                     }
                     Spacer()
                 } else if filteredEvents.isEmpty {
@@ -64,7 +67,8 @@ struct EventsListView: View {
                                 EventRowView(event: event)
                             }
                             .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+                            .listRowSeparator(.hidden)
                         }
 
                         if hasMore && searchText.isEmpty {
@@ -72,31 +76,46 @@ struct EventsListView: View {
                                 Spacer()
                                 if isLoadingMore {
                                     ProgressView()
+                                        .tint(.cxAccent)
                                 } else {
-                                    Button("Load More") {
+                                    Button("LOAD MORE") {
                                         Task { await loadMore() }
                                     }
-                                    .font(.subheadline)
+                                    .font(.cxData)
+                                    .foregroundStyle(.cxAccent)
+                                    .tracking(1)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                            .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1)
+                                    )
                                 }
                                 Spacer()
                             }
                             .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                             .onAppear {
                                 Task { await loadMore() }
                             }
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .refreshable { await refresh() }
                 }
             }
-            .navigationTitle("Events")
-            .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search events, countries…")
+            .background(Color.cxBackground)
+            .navigationTitle("EVENTS")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Search events, countries...")
+            .tint(.cxAccent)
             .sheet(item: $selectedEvent) { event in
                 EventDetailSheet(event: event)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.cxBackground)
             }
             .task { await refresh() }
             .onChange(of: sourceFilter) { _, _ in Task { await refresh() } }
@@ -107,24 +126,44 @@ struct EventsListView: View {
     // MARK: - Filter Bar
 
     private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(SourceFilter.allCases) { filter in
-                    SourceChip(filter: filter, isSelected: sourceFilter == filter) {
-                        sourceFilter = filter
+        VStack(spacing: 0) {
+            // Source row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SOURCE")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SourceFilter.allCases) { filter in
+                        SourceChip(filter: filter, isSelected: sourceFilter == filter) {
+                            sourceFilter = filter
+                        }
                     }
                 }
-
-                Divider().frame(height: 20)
-
-                ForEach(SeverityFilter.allCases) { filter in
-                    SeverityChip(filter: filter, isSelected: severityFilter == filter) {
-                        severityFilter = filter
-                    }
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+
+            Rectangle()
+                .fill(Color.cxBorder)
+                .frame(height: 1)
+
+            // Severity row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SEVERITY")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SeverityFilter.allCases) { filter in
+                        SeverityChip(filter: filter, isSelected: severityFilter == filter) {
+                            severityFilter = filter
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
         }
     }
 
@@ -184,66 +223,77 @@ struct EventRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
-                // Severity indicator
-                RoundedRectangle(cornerRadius: 2)
+                // Severity indicator bar
+                RoundedRectangle(cornerRadius: 1)
                     .fill(event.severityColor)
-                    .frame(width: 4)
+                    .frame(width: 3)
                     .frame(maxHeight: .infinity)
 
                 VStack(alignment: .leading, spacing: 6) {
                     // Tags row
                     HStack(spacing: 6) {
                         // Severity
-                        Label(event.severityLabel, systemImage: event.severityIcon)
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 7)
+                        Label(event.severityLabel.uppercased(), systemImage: event.severityIcon)
+                            .font(.cxData)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(event.severityColor.opacity(0.15))
+                            .background(event.severityColor.opacity(0.1))
                             .foregroundStyle(event.severityColor)
-                            .cornerRadius(10)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
                         // Source
-                        Text(event.sourceDisplayName)
-                            .font(.system(size: 10, weight: .semibold))
-                            .padding(.horizontal, 7)
+                        Text(event.sourceDisplayName.uppercased())
+                            .font(.cxData)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(event.sourceColor.opacity(0.1))
                             .foregroundStyle(event.sourceColor)
-                            .cornerRadius(10)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                        Spacer()
+                        Spacer(minLength: 4)
 
                         Text(event.relativeDate)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .font(.cxMono)
+                            .foregroundStyle(.cxTextTertiary)
+                            .lineLimit(1)
+                            .layoutPriority(-1)
                     }
 
                     // Title
                     Text(event.title)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.cxBody)
+                        .fontWeight(.semibold)
                         .lineLimit(2)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.cxText)
 
                     // Location
                     HStack(spacing: 4) {
                         Image(systemName: "mappin.circle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.cxTextTertiary)
                         Text([event.locationName, event.country]
                             .compactMap { $0 }
                             .filter { !$0.isEmpty }
                             .joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.cxData)
+                            .foregroundStyle(.cxTextSecondary)
                             .lineLimit(1)
                     }
                 }
             }
         }
         .padding(.vertical, 10)
-        .padding(.horizontal, 14)
-        .background(.gray.opacity(0.06))
-        .cornerRadius(14)
+        .padding(.horizontal, 12)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
     }
 }
 

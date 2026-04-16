@@ -13,7 +13,9 @@ struct MyReportsView: View {
     var body: some View {
         Group {
             if isLoading && reports.isEmpty {
-                ProgressView("Loading your reports…")
+                ProgressView("Loading your reports...")
+                    .tint(.cxAccent)
+                    .foregroundStyle(.cxTextSecondary)
             } else if let error = errorMessage, reports.isEmpty {
                 ContentUnavailableView {
                     Label("Failed to Load", systemImage: "wifi.slash")
@@ -21,12 +23,15 @@ struct MyReportsView: View {
                     Text(error)
                 } actions: {
                     Button("Retry") { Task { await load() } }
+                        .foregroundStyle(.cxAccent)
                 }
             } else if reports.isEmpty {
                 ContentUnavailableView {
                     Label("No Reports Yet", systemImage: "square.and.pencil")
+                        .foregroundStyle(.cxAccent)
                 } description: {
                     Text("Submit your first report from the Report tab to help others stay informed.")
+                        .foregroundStyle(.cxTextSecondary)
                 }
             } else {
                 List {
@@ -45,19 +50,23 @@ struct MyReportsView: View {
                             }
                         }
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+                        .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .refreshable { await load() }
             }
         }
-        .navigationTitle("My Reports")
+        .background(Color.cxBackground)
+        .navigationTitle("MY REPORTS")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedEvent) { event in
             EventDetailSheet(event: event)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.cxBackground)
         }
         .confirmationDialog(
             "Delete Report",
@@ -108,49 +117,61 @@ struct UserReportRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(report.severityLabel, systemImage: report.severityIcon)
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 8)
+            HStack(spacing: 6) {
+                Label(report.severityLabel.uppercased(), systemImage: report.severityIcon)
+                    .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(report.severityColor.opacity(0.15))
+                    .background(report.severityColor.opacity(0.1))
                     .foregroundStyle(report.severityColor)
-                    .cornerRadius(10)
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                Label(report.eventTypeDisplayName, systemImage: "tag.fill")
-                    .font(.system(size: 10, weight: .semibold))
-                    .padding(.horizontal, 8)
+                Label(report.eventTypeDisplayName.uppercased(), systemImage: "tag.fill")
+                    .font(.cxData)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(.purple.opacity(0.1))
-                    .foregroundStyle(.purple)
-                    .cornerRadius(10)
+                    .background(Color.cxSourceUser.opacity(0.1))
+                    .foregroundStyle(.cxSourceUser)
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 Text(report.relativeDate)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(.cxMono)
+                    .foregroundStyle(.cxTextTertiary)
+                    .lineLimit(1)
+                    .layoutPriority(-1)
             }
 
             Text(report.title)
-                .font(.subheadline.weight(.semibold))
+                .font(.cxBody)
+                .fontWeight(.semibold)
+                .foregroundStyle(.cxText)
                 .lineLimit(2)
 
             HStack(spacing: 4) {
                 Image(systemName: "mappin.circle.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.cxTextTertiary)
                 Text([report.locationName, report.country]
                     .compactMap { $0 }
                     .filter { !$0.isEmpty }
-                    .joined(separator: " • "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .joined(separator: " // "))
+                    .font(.cxData)
+                    .foregroundStyle(.cxTextSecondary)
             }
         }
         .padding(.vertical, 10)
-        .padding(.horizontal, 14)
-        .background(.gray.opacity(0.06))
-        .cornerRadius(14)
+        .padding(.horizontal, 12)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
     }
 }

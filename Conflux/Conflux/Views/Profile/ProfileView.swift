@@ -19,27 +19,30 @@ struct ProfileView: View {
                     VStack(spacing: 16) {
                         ZStack {
                             Circle()
-                                .fill(LinearGradient(
-                                    colors: [.red, .orange],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
+                                .fill(Color.cxSurface)
                                 .frame(width: 80, height: 80)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.cxAccent.opacity(0.5), lineWidth: 1)
+                                )
+                                .cxGlow(.cxAccent, radius: 12)
 
                             Text(user?.displayName.prefix(1).uppercased() ?? "?")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(.white)
+                                .font(.cxHeading)
+                                .foregroundStyle(.cxAccent)
                         }
 
                         VStack(spacing: 4) {
                             if let user {
                                 Text(user.displayName)
-                                    .font(.title2.bold())
+                                    .font(.cxTitle)
+                                    .foregroundStyle(.cxText)
                                 Text(user.email)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(.cxData)
+                                    .foregroundStyle(.cxTextSecondary)
                             } else {
                                 ProgressView()
+                                    .tint(.cxAccent)
                             }
                         }
                     }
@@ -49,128 +52,155 @@ struct ProfileView: View {
                 }
 
                 // Edit profile
-                Section("Account") {
+                Section {
                     if isEditingName {
                         HStack {
                             TextField("Display name", text: $newDisplayName)
                                 .textContentType(.name)
+                                .font(.system(.body, design: .monospaced))
                             if isSaving {
-                                ProgressView().scaleEffect(0.8)
+                                ProgressView()
+                                    .tint(.cxAccent)
+                                    .scaleEffect(0.8)
                             } else {
                                 Button("Save") {
                                     Task { await saveName() }
                                 }
+                                .foregroundStyle(.cxAccent)
                                 .fontWeight(.semibold)
                                 .disabled(newDisplayName.trimmingCharacters(in: .whitespaces).isEmpty)
                             }
                             Button("Cancel") {
                                 isEditingName = false
                             }
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.cxTextTertiary)
                         }
+                        .listRowBackground(Color.cxSurface)
                     } else {
                         Button {
                             newDisplayName = user?.displayName ?? ""
                             isEditingName = true
                         } label: {
                             Label("Edit Display Name", systemImage: "pencil")
+                                .foregroundStyle(.cxAccent)
                         }
+                        .listRowBackground(Color.cxSurface)
                     }
 
                     if let error = errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.caption)
+                            .foregroundStyle(.cxCritical)
+                            .font(.cxData)
+                            .listRowBackground(Color.cxSurface)
                     }
+                } header: {
+                    Text("ACCOUNT")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1.5)
                 }
 
                 // My Reports
-                Section("My Activity") {
+                Section {
                     NavigationLink {
                         MyReportsView()
                     } label: {
                         Label("My Reports", systemImage: "square.and.pencil.circle.fill")
+                            .foregroundStyle(.cxText)
                     }
+                    .listRowBackground(Color.cxSurface)
+                } header: {
+                    Text("MY ACTIVITY")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1.5)
                 }
 
-                // Appearance
-                Section("Appearance") {
-                    Picker(selection: Binding(
-                        get: { authManager.appColorScheme },
-                        set: { authManager.setColorScheme($0) }
-                    )) {
-                        ForEach(AppColorScheme.allCases) { scheme in
-                            Label(scheme.rawValue, systemImage: scheme.icon).tag(scheme)
-                        }
-                    } label: {
-                        Label("Theme", systemImage: "paintbrush.fill")
+                // Appearance note
+                Section {
+                    HStack {
+                        Label("Theme", systemImage: "moon.fill")
+                            .foregroundStyle(.cxText)
+                        Spacer()
+                        Text("DARK MODE")
+                            .font(.cxData)
+                            .foregroundStyle(.cxAccent)
                     }
-                    .pickerStyle(.menu)
+                    .listRowBackground(Color.cxSurface)
+                } header: {
+                    Text("APPEARANCE")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1.5)
                 }
 
                 // About
-                Section("About Conflux") {
-                    HStack {
-                        Label("Data Sources", systemImage: "newspaper.fill")
-                        Spacer()
-                        Text("GDELT + User Reports")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Label("Update Interval", systemImage: "clock.fill")
-                        Spacer()
-                        Text("Every 15 minutes")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Label("Coverage", systemImage: "globe")
-                        Spacer()
-                        Text("Global")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Label("Event Types", systemImage: "exclamationmark.triangle.fill")
-                        Spacer()
-                        Text("Armed conflict, force, unrest")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
+                Section {
+                    aboutRow(icon: "newspaper.fill", label: "Data Sources", value: "GDELT + USER REPORTS")
+                    aboutRow(icon: "clock.fill", label: "Update Interval", value: "EVERY 15 MIN")
+                    aboutRow(icon: "globe", label: "Coverage", value: "GLOBAL")
+                    aboutRow(icon: "exclamationmark.triangle.fill", label: "Event Types", value: "CONFLICT, FORCE, UNREST")
+                } header: {
+                    Text("ABOUT CONFLUX")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1.5)
                 }
 
                 // Severity legend
-                Section("Severity Levels") {
+                Section {
                     ForEach(SeverityFilter.allCases.dropFirst()) { severity in
-                        HStack {
-                            Circle()
+                        HStack(spacing: 10) {
+                            Rectangle()
                                 .fill(severity.color)
-                                .frame(width: 12, height: 12)
-                            Text(severity.rawValue)
+                                .frame(width: 3, height: 18)
+
+                            Text(severity.rawValue.uppercased())
+                                .font(.cxData)
+                                .foregroundStyle(.cxText)
+
                             Spacer()
+
                             Text(severityDescription(severity))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.cxData)
+                                .foregroundStyle(.cxTextSecondary)
                         }
+                        .listRowBackground(Color.cxSurface)
                     }
+                } header: {
+                    Text("SEVERITY LEVELS")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1.5)
                 }
 
                 // Logout
                 Section {
-                    Button(role: .destructive) {
+                    Button {
                         showLogoutConfirm = true
                     } label: {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        HStack {
+                            Spacer()
+                            Text("SIGN OUT")
+                                .font(.cxData)
+                                .foregroundStyle(.cxCritical)
+                                .tracking(1)
+                            Spacer()
+                        }
                     }
+                    .listRowBackground(Color.cxSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                            .stroke(Color.cxCritical.opacity(0.3), lineWidth: 1)
+                    )
                 }
             }
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.large)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.cxBackground)
+            .navigationTitle("PROFILE")
+            .navigationBarTitleDisplayMode(.inline)
+            .tint(.cxAccent)
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) {
                     authManager.logout()
@@ -185,6 +215,18 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    private func aboutRow(icon: String, label: String, value: String) -> some View {
+        HStack {
+            Label(label, systemImage: icon)
+                .foregroundStyle(.cxText)
+            Spacer()
+            Text(value)
+                .font(.cxData)
+                .foregroundStyle(.cxTextSecondary)
+        }
+        .listRowBackground(Color.cxSurface)
     }
 
     private func saveName() async {
