@@ -19,9 +19,9 @@ struct ContentView: View {
                     onTap: { notifManager.dismissBanner() },
                     onDismiss: { notifManager.dismissBanner() }
                 )
-                .appear()
                 .padding(.top, 50)
                 .zIndex(100)
+                .animation(.easeOut(duration: 0.3), value: notifManager.newBanner?.id)
             }
         }
     }
