@@ -149,6 +149,7 @@ struct ReportFormView: View {
                                         }
                                         .cxChip(isSelected: severity == s, activeColor: s.color)
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }

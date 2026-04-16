@@ -126,27 +126,44 @@ struct EventsListView: View {
     // MARK: - Filter Bar
 
     private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(SourceFilter.allCases) { filter in
-                    SourceChip(filter: filter, isSelected: sourceFilter == filter) {
-                        sourceFilter = filter
+        VStack(spacing: 0) {
+            // Source row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SOURCE")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SourceFilter.allCases) { filter in
+                        SourceChip(filter: filter, isSelected: sourceFilter == filter) {
+                            sourceFilter = filter
+                        }
                     }
                 }
-
-                Rectangle()
-                    .fill(Color.cxBorder)
-                    .frame(width: 1, height: 20)
-                    .padding(.horizontal, 4)
-
-                ForEach(SeverityFilter.allCases) { filter in
-                    SeverityChip(filter: filter, isSelected: severityFilter == filter) {
-                        severityFilter = filter
-                    }
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+
+            Rectangle()
+                .fill(Color.cxBorder)
+                .frame(height: 1)
+
+            // Severity row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("SEVERITY")
+                        .font(.cxLabel)
+                        .foregroundStyle(.cxTextTertiary)
+                        .tracking(1)
+                    ForEach(SeverityFilter.allCases) { filter in
+                        SeverityChip(filter: filter, isSelected: severityFilter == filter) {
+                            severityFilter = filter
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
         }
     }
 
