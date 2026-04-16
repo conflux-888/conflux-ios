@@ -11,68 +11,61 @@ struct LoginView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color(red: 0.05, green: 0.05, blue: 0.15), Color(red: 0.1, green: 0.1, blue: 0.25)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                Color.cxBackground
+                    .ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 32) {
                         // Logo
                         VStack(spacing: 12) {
-                            Image(systemName: "globe.europe.africa.fill")
-                                .font(.system(size: 64))
-                                .foregroundStyle(.red)
-                                .shadow(color: .red.opacity(0.5), radius: 20)
+                            Image(systemName: "globe.europe.africa")
+                                .font(.system(size: 64, weight: .thin))
+                                .foregroundStyle(.cxAccent)
+                                .cxGlow(.cxAccent, radius: 20)
 
-                            Text("Conflux")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(.white)
+                            Text("CONFLUX")
+                                .font(.cxHeading)
+                                .foregroundStyle(.cxText)
+                                .tracking(4)
 
-                            Text("Global Conflict Monitor")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.6))
+                            Text("GLOBAL CONFLICT MONITOR")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextSecondary)
+                                .tracking(2)
                         }
                         .padding(.top, 60)
 
                         // Form
                         VStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Label("Email", systemImage: "envelope")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white.opacity(0.7))
+                                Label("EMAIL", systemImage: "envelope")
+                                    .font(.cxLabel)
+                                    .foregroundStyle(.cxTextSecondary)
+                                    .tracking(1)
                                 TextField("you@example.com", text: $email)
                                     .keyboardType(.emailAddress)
                                     .textContentType(.emailAddress)
                                     .autocapitalization(.none)
-                                    .padding()
-                                    .background(.white.opacity(0.1))
-                                    .cornerRadius(12)
-                                    .foregroundStyle(.white)
+                                    .cxField()
                             }
 
                             VStack(alignment: .leading, spacing: 6) {
-                                Label("Password", systemImage: "lock")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white.opacity(0.7))
+                                Label("PASSWORD", systemImage: "lock")
+                                    .font(.cxLabel)
+                                    .foregroundStyle(.cxTextSecondary)
+                                    .tracking(1)
                                 SecureField("Min 8 characters", text: $password)
                                     .textContentType(.password)
-                                    .padding()
-                                    .background(.white.opacity(0.1))
-                                    .cornerRadius(12)
-                                    .foregroundStyle(.white)
+                                    .cxField()
                             }
 
                             if let error = errorMessage {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                     Text(error)
-                                        .font(.caption)
+                                        .font(.cxData)
                                 }
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.cxCritical)
                                 .padding(.horizontal)
                             }
 
@@ -81,19 +74,21 @@ struct LoginView: View {
                             } label: {
                                 if isLoading {
                                     ProgressView()
-                                        .tint(.white)
+                                        .tint(.black)
                                 } else {
-                                    Text("Sign In")
-                                        .font(.headline)
+                                    Text("SIGN IN")
+                                        .font(.cxTitle)
+                                        .tracking(2)
                                 }
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(.red)
-                            .cornerRadius(12)
-                            .foregroundStyle(.white)
+                            .background(Color.cxAccent)
+                            .foregroundStyle(.black)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                            .cxGlow(.cxAccent, radius: 12)
                             .disabled(isLoading || email.isEmpty || password.isEmpty)
-                            .opacity((isLoading || email.isEmpty || password.isEmpty) ? 0.6 : 1)
+                            .opacity((isLoading || email.isEmpty || password.isEmpty) ? 0.5 : 1)
                         }
                         .padding(.horizontal, 24)
 
@@ -103,12 +98,12 @@ struct LoginView: View {
                         } label: {
                             HStack {
                                 Text("Don't have an account?")
-                                    .foregroundStyle(.white.opacity(0.6))
-                                Text("Register")
+                                    .foregroundStyle(.cxTextTertiary)
+                                Text("REGISTER")
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(.cxAccent)
                             }
-                            .font(.subheadline)
+                            .font(.cxData)
                         }
 
                         Spacer()

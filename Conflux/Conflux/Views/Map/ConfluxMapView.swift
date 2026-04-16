@@ -28,7 +28,7 @@ struct ConfluxMapView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Map
+            // Map - dark satellite imagery
             Map(position: $position) {
                 ForEach(filteredEvents) { event in
                     Annotation("", coordinate: event.coordinate, anchor: .center) {
@@ -37,22 +37,21 @@ struct ConfluxMapView: View {
                     }
                 }
             }
-            .mapStyle(.standard(elevation: .realistic))
+            .mapStyle(.imagery(elevation: .flat))
             .ignoresSafeArea(edges: .all)
 
             // Top overlay
             VStack(spacing: 0) {
                 // Filter bar
                 filterBar
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 0))
+                    .background(Color.cxBackgroundPure.opacity(0.85))
 
                 Spacer()
 
                 // Stats banner
                 if !events.isEmpty {
                     statsBanner
-                        .padding(.bottom, 90) // above tab bar
+                        .padding(.bottom, 90)
                 }
             }
 
@@ -60,17 +59,22 @@ struct ConfluxMapView: View {
             if isLoading {
                 VStack {
                     Spacer()
-                    HStack {
+                    HStack(spacing: 8) {
                         ProgressView()
-                            .tint(.white)
-                        Text("Loading events…")
-                            .font(.caption)
-                            .foregroundStyle(.white)
+                            .tint(.cxAccent)
+                        Text("LOADING EVENTS")
+                            .font(.cxData)
+                            .foregroundStyle(.cxText)
+                            .tracking(1)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.black.opacity(0.7))
-                    .cornerRadius(20)
+                    .background(Color.cxSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                            .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                    )
                     .padding(.bottom, 100)
                 }
             }
@@ -79,6 +83,7 @@ struct ConfluxMapView: View {
             EventDetailSheet(event: event)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.cxBackground)
         }
         .task { await loadEvents() }
         .onChange(of: sourceFilter) { _, _ in Task { await loadEvents() } }
@@ -89,20 +94,19 @@ struct ConfluxMapView: View {
 
     private var filterBar: some View {
         VStack(spacing: 0) {
-            // Source filter row
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(SourceFilter.allCases) { filter in
                         SourceChip(filter: filter, isSelected: sourceFilter == filter) {
                             sourceFilter = filter
                         }
                     }
 
-                    Divider()
-                        .frame(height: 20)
+                    Rectangle()
+                        .fill(Color.cxBorder)
+                        .frame(width: 1, height: 20)
                         .padding(.horizontal, 4)
 
-                    // Severity filter inline
                     ForEach(SeverityFilter.allCases) { filter in
                         SeverityChip(filter: filter, isSelected: severityFilter == filter) {
                             severityFilter = filter
@@ -120,18 +124,22 @@ struct ConfluxMapView: View {
     private var statsBanner: some View {
         HStack(spacing: 16) {
             StatBadge(count: filteredEvents.filter { $0.severity == "critical" }.count,
-                      label: "Critical", color: .red)
+                      label: "CRITICAL", color: .cxCritical)
             StatBadge(count: filteredEvents.filter { $0.severity == "high" }.count,
-                      label: "High", color: .orange)
+                      label: "HIGH", color: .cxHigh)
             StatBadge(count: filteredEvents.filter { $0.severity == "medium" }.count,
-                      label: "Medium", color: Color(red: 0.9, green: 0.75, blue: 0))
+                      label: "MEDIUM", color: .cxMedium)
             StatBadge(count: filteredEvents.filter { $0.source == "user_report" }.count,
-                      label: "User", color: .purple)
+                      label: "USER", color: .cxSourceUser)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
-        .cornerRadius(20)
+        .background(Color.cxBackgroundPure.opacity(0.85))
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
         .padding(.horizontal)
     }
 
@@ -162,27 +170,35 @@ struct ConfluxMapView: View {
 
 struct EventPinView: View {
     let event: Event
-    @State private var isPressed = false
+    @State private var isPulsing = false
 
     var body: some View {
         ZStack {
+            // Outer glow ring
             Circle()
-                .fill(event.severityColor.opacity(0.25))
-                .frame(width: 36, height: 36)
+                .fill(event.severityColor.opacity(0.15))
+                .frame(width: 32, height: 32)
+                .opacity(event.severity == "critical" && isPulsing ? 0.6 : 1)
 
+            // Inner dot
             Circle()
                 .fill(event.severityColor)
-                .frame(width: 20, height: 20)
+                .frame(width: 14, height: 14)
                 .shadow(color: event.severityColor.opacity(0.6), radius: 6)
 
-            // Source indicator dot
+            // Source indicator
             Circle()
-                .fill(event.source == "user_report" ? Color.purple : Color.blue)
-                .frame(width: 6, height: 6)
-                .offset(x: 7, y: -7)
+                .fill(event.source == "user_report" ? Color.cxSourceUser : Color.cxSourceGDELT)
+                .frame(width: 5, height: 5)
+                .offset(x: 6, y: -6)
         }
-        .scaleEffect(isPressed ? 1.3 : 1.0)
-        .animation(.spring(duration: 0.2), value: isPressed)
+        .onAppear {
+            if event.severity == "critical" {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    isPulsing = true
+                }
+            }
+        }
     }
 }
 
@@ -197,15 +213,10 @@ struct SourceChip: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: filter.icon)
-                    .font(.caption)
-                Text(filter.rawValue)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 10))
+                Text(filter.rawValue.uppercased())
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(isSelected ? Color.accentColor : Color.gray.opacity(0.15))
-            .foregroundStyle(isSelected ? .white : .primary)
-            .cornerRadius(20)
+            .cxChip(isSelected: isSelected)
         }
     }
 }
@@ -221,20 +232,11 @@ struct SeverityChip: View {
                 if filter != .all {
                     Circle()
                         .fill(filter.color)
-                        .frame(width: 7, height: 7)
+                        .frame(width: 6, height: 6)
                 }
-                Text(filter.rawValue)
-                    .font(.caption.weight(.semibold))
+                Text(filter.rawValue.uppercased())
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(isSelected ? filter.color.opacity(0.2) : Color.gray.opacity(0.12))
-            .foregroundStyle(isSelected ? filter.color : .secondary)
-            .cornerRadius(20)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? filter.color : Color.clear, lineWidth: 1.5)
-            )
+            .cxChip(isSelected: isSelected, activeColor: filter == .all ? .cxAccent : filter.color)
         }
     }
 }
@@ -247,13 +249,14 @@ struct StatBadge: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 2) {
             Text("\(count)")
-                .font(.caption.weight(.bold))
+                .font(.cxMono)
                 .foregroundStyle(color)
             Text(label)
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
         }
     }
 }

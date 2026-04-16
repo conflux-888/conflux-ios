@@ -16,87 +16,92 @@ struct RegisterView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.05, green: 0.05, blue: 0.15), Color(red: 0.1, green: 0.1, blue: 0.25)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color.cxBackground
+                .ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 8) {
-                        Text("Create Account")
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(.white)
-                        Text("Join the global conflict monitoring network")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.6))
+                        Text("CREATE ACCOUNT")
+                            .font(.cxHeading)
+                            .foregroundStyle(.cxText)
+                            .tracking(3)
+                        Text("JOIN THE GLOBAL CONFLICT MONITORING NETWORK")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextSecondary)
+                            .tracking(1.5)
                             .multilineTextAlignment(.center)
                     }
                     .padding(.top, 40)
 
                     VStack(spacing: 14) {
-                        FormField(label: "Display Name", icon: "person", placeholder: "Your name", text: $displayName)
-                        FormField(label: "Email", icon: "envelope", placeholder: "you@example.com", text: $email, keyboardType: .emailAddress)
-                        FormField(label: "Password", icon: "lock", placeholder: "Min 8 characters", text: $password, isSecure: true)
+                        FormField(label: "DISPLAY NAME", icon: "person", placeholder: "Your name", text: $displayName)
+                        FormField(label: "EMAIL", icon: "envelope", placeholder: "you@example.com", text: $email, keyboardType: .emailAddress)
+                        FormField(label: "PASSWORD", icon: "lock", placeholder: "Min 8 characters", text: $password, isSecure: true)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Label("Confirm Password", systemImage: "lock.shield")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.7))
+                            Label("CONFIRM PASSWORD", systemImage: "lock.shield")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextSecondary)
+                                .tracking(1)
                             SecureField("Re-enter password", text: $confirmPassword)
                                 .textContentType(.newPassword)
                                 .padding()
-                                .background(.white.opacity(0.1))
-                                .cornerRadius(12)
-                                .foregroundStyle(.white)
+                                .background(Color.cxSurface)
+                                .foregroundStyle(.cxText)
+                                .font(.system(.body, design: .monospaced))
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(!confirmPassword.isEmpty && !passwordsMatch ? Color.red : Color.clear, lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                        .stroke(
+                                            !confirmPassword.isEmpty && !passwordsMatch ? Color.cxCritical : Color.cxBorder,
+                                            lineWidth: CXConstants.borderWidth
+                                        )
                                 )
                         }
 
                         if !confirmPassword.isEmpty && !passwordsMatch {
                             Text("Passwords do not match")
-                                .font(.caption)
-                                .foregroundStyle(.red)
+                                .font(.cxData)
+                                .foregroundStyle(.cxCritical)
                         }
 
                         if let error = errorMessage {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                 Text(error)
-                                    .font(.caption)
+                                    .font(.cxData)
                             }
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.cxCritical)
                         }
 
                         Button {
                             Task { await register() }
                         } label: {
                             if isLoading {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(.black)
                             } else {
-                                Text("Create Account")
-                                    .font(.headline)
+                                Text("CREATE ACCOUNT")
+                                    .font(.cxTitle)
+                                    .tracking(2)
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(.red)
-                        .cornerRadius(12)
-                        .foregroundStyle(.white)
+                        .background(Color.cxAccent)
+                        .foregroundStyle(.black)
+                        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                        .cxGlow(.cxAccent, radius: 12)
                         .disabled(isLoading || !formValid)
-                        .opacity(isLoading || !formValid ? 0.6 : 1)
+                        .opacity(isLoading || !formValid ? 0.5 : 1)
                     }
                     .padding(.horizontal, 24)
 
                     Button("Already have an account? Sign In") {
                         dismiss()
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.cxData)
+                    .foregroundStyle(.cxTextTertiary)
                 }
             }
         }
@@ -107,7 +112,7 @@ struct RegisterView: View {
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.cxAccent)
                 }
             }
         }
@@ -141,12 +146,13 @@ struct FormField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(label, systemImage: icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.cxLabel)
+                .foregroundStyle(.cxTextSecondary)
+                .tracking(1)
             Group {
                 if isSecure {
                     SecureField(placeholder, text: $text)
-                        .textContentType(isSecure ? .newPassword : .none)
+                        .textContentType(.newPassword)
                 } else {
                     TextField(placeholder, text: $text)
                         .keyboardType(keyboardType)
@@ -154,10 +160,7 @@ struct FormField: View {
                         .textContentType(keyboardType == .emailAddress ? .emailAddress : .name)
                 }
             }
-            .padding()
-            .background(.white.opacity(0.1))
-            .cornerRadius(12)
-            .foregroundStyle(.white)
+            .cxField()
         }
     }
 }

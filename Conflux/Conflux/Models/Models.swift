@@ -65,11 +65,11 @@ struct Event: Codable, Identifiable, Hashable {
 
     var severityColor: Color {
         switch severity {
-        case "critical": return .red
-        case "high": return .orange
-        case "medium": return Color(red: 0.9, green: 0.75, blue: 0)
-        case "low": return .green
-        default: return .gray
+        case "critical": return .cxCritical
+        case "high": return .cxHigh
+        case "medium": return .cxMedium
+        case "low": return .cxLow
+        default: return .cxTextTertiary
         }
     }
 
@@ -90,7 +90,7 @@ struct Event: Codable, Identifiable, Hashable {
     }
 
     var sourceColor: Color {
-        source == "gdelt" ? .blue : .purple
+        source == "gdelt" ? .cxSourceGDELT : .cxSourceUser
     }
 
     var sourceIcon: String {
@@ -223,11 +223,11 @@ enum SeverityFilter: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .all: return .primary
-        case .critical: return .red
-        case .high: return .orange
-        case .medium: return Color(red: 0.9, green: 0.75, blue: 0)
-        case .low: return .green
+        case .all: return .cxText
+        case .critical: return .cxCritical
+        case .high: return .cxHigh
+        case .medium: return .cxMedium
+        case .low: return .cxLow
         }
     }
 }
@@ -275,10 +275,10 @@ enum ReportSeverity: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .critical: return .red
-        case .high: return .orange
-        case .medium: return Color(red: 0.9, green: 0.75, blue: 0)
-        case .low: return .green
+        case .critical: return .cxCritical
+        case .high: return .cxHigh
+        case .medium: return .cxMedium
+        case .low: return .cxLow
         }
     }
 }

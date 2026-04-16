@@ -37,60 +37,84 @@ struct ReportFormView: View {
                     Section {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Tap the map to pin the event location", systemImage: "hand.tap.fill")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.cxData)
+                                .foregroundStyle(.cxTextSecondary)
 
                             ZStack {
                                 Map(position: $mapPosition) {
                                     Annotation("Event", coordinate: selectedCoordinate, anchor: .bottom) {
                                         Image(systemName: "mappin.circle.fill")
                                             .font(.title)
-                                            .foregroundStyle(.red)
-                                            .shadow(radius: 4)
+                                            .foregroundStyle(.cxAccent)
+                                            .shadow(color: .cxAccent.opacity(0.5), radius: 4)
                                     }
                                 }
+                                .mapStyle(.imagery(elevation: .flat))
                                 .frame(height: 240)
-                                .cornerRadius(14)
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                        .stroke(Color.cxBorder, lineWidth: 1)
+                                )
                                 .onMapCameraChange { context in
                                     selectedCoordinate = context.region.center
                                 }
 
-                                // Crosshair for center-based selection
-                                Image(systemName: "plus.circle")
+                                // Crosshair
+                                Image(systemName: "plus")
                                     .font(.title2)
-                                    .foregroundStyle(.white)
-                                    .shadow(radius: 2)
+                                    .foregroundStyle(.cxAccent)
+                                    .shadow(color: .cxAccent.opacity(0.5), radius: 2)
                             }
 
-                            Text("Pan the map — crosshair marks the selected point")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            Text("PAN MAP — CROSSHAIR MARKS SELECTED POINT")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextTertiary)
+                                .tracking(0.5)
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     } header: {
-                        Text("Select Location")
+                        Text("SELECT LOCATION")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextTertiary)
+                            .tracking(1.5)
                     }
 
                     Section {
                         HStack {
-                            Label("Lat", systemImage: "location")
+                            Label("LAT", systemImage: "location")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextSecondary)
                             Spacer()
                             Text(String(format: "%.4f", selectedCoordinate.latitude))
-                                .foregroundStyle(.secondary)
+                                .font(.cxData)
+                                .foregroundStyle(.cxAccent)
                         }
+                        .listRowBackground(Color.cxSurface)
                         HStack {
-                            Label("Lng", systemImage: "location")
+                            Label("LNG", systemImage: "location")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextSecondary)
                             Spacer()
                             Text(String(format: "%.4f", selectedCoordinate.longitude))
-                                .foregroundStyle(.secondary)
+                                .font(.cxData)
+                                .foregroundStyle(.cxAccent)
                         }
+                        .listRowBackground(Color.cxSurface)
                         TextField("Location name (optional)", text: $locationName)
+                            .font(.system(.body, design: .monospaced))
+                            .listRowBackground(Color.cxSurface)
                         TextField("Country code (e.g. TH, US, IR)", text: $country)
                             .autocapitalization(.allCharacters)
+                            .font(.system(.body, design: .monospaced))
+                            .listRowBackground(Color.cxSurface)
                     } header: {
-                        Text("Location Details")
+                        Text("LOCATION DETAILS")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextTertiary)
+                            .tracking(1.5)
                     }
 
                 } else {
@@ -103,39 +127,61 @@ struct ReportFormView: View {
                             }
                         }
                         .pickerStyle(.navigationLink)
+                        .listRowBackground(Color.cxSurface)
 
-                        Picker("Severity", selection: $severity) {
-                            ForEach(ReportSeverity.allCases) { s in
-                                HStack {
-                                    Circle()
-                                        .fill(s.color)
-                                        .frame(width: 10, height: 10)
-                                    Text(s.displayName)
+                        // Custom severity chips
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("SEVERITY")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextSecondary)
+                                .tracking(1)
+
+                            HStack(spacing: 6) {
+                                ForEach(ReportSeverity.allCases) { s in
+                                    Button {
+                                        severity = s
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(s.color)
+                                                .frame(width: 6, height: 6)
+                                            Text(s.displayName.uppercased())
+                                        }
+                                        .cxChip(isSelected: severity == s, activeColor: s.color)
+                                    }
                                 }
-                                .tag(s)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .listRowBackground(Color.cxSurface)
                     } header: {
-                        Text("Event Classification")
+                        Text("EVENT CLASSIFICATION")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextTertiary)
+                            .tracking(1.5)
                     }
 
                     Section {
                         TextField("Short title describing the event", text: $title, axis: .vertical)
                             .lineLimit(2, reservesSpace: true)
+                            .listRowBackground(Color.cxSurface)
 
                         ZStack(alignment: .topLeading) {
                             if descriptionText.isEmpty {
-                                Text("Describe what you witnessed (optional)…")
-                                    .foregroundStyle(.tertiary)
+                                Text("Describe what you witnessed (optional)...")
+                                    .foregroundStyle(.cxTextTertiary)
                                     .padding(.vertical, 8)
                                     .padding(.horizontal, 4)
                             }
                             TextEditor(text: $descriptionText)
                                 .frame(minHeight: 100)
+                                .scrollContentBackground(.hidden)
                         }
+                        .listRowBackground(Color.cxSurface)
                     } header: {
-                        Text("Event Description")
+                        Text("EVENT DESCRIPTION")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextTertiary)
+                            .tracking(1.5)
                     }
 
                     // Preview card
@@ -151,7 +197,10 @@ struct ReportFormView: View {
                             .listRowBackground(Color.clear)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         } header: {
-                            Text("Preview")
+                            Text("PREVIEW")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextTertiary)
+                                .tracking(1.5)
                         }
                     }
                 }
@@ -160,17 +209,21 @@ struct ReportFormView: View {
                 if let error = errorMessage {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.subheadline)
+                            .foregroundStyle(.cxCritical)
+                            .font(.cxData)
                     }
                 }
             }
-            .navigationTitle("Report Event")
+            .scrollContentBackground(.hidden)
+            .background(Color.cxBackground)
+            .navigationTitle("REPORT EVENT")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.cxAccent)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if step == 2 {
                         Button("Back") { step = 1 }
+                            .foregroundStyle(.cxAccent)
                     }
                 }
 
@@ -183,15 +236,19 @@ struct ReportFormView: View {
                                 errorMessage = "Please enter the country code"
                             }
                         }
+                        .foregroundStyle(.cxAccent)
                     } else {
                         Button {
                             Task { await submit() }
                         } label: {
                             if isSubmitting {
-                                ProgressView().scaleEffect(0.8)
+                                ProgressView()
+                                    .tint(.cxAccent)
+                                    .scaleEffect(0.8)
                             } else {
                                 Text("Submit")
                                     .fontWeight(.semibold)
+                                    .foregroundStyle(.cxAccent)
                             }
                         }
                         .disabled(isSubmitting || !formValid)
@@ -258,44 +315,51 @@ struct EventPreviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(severity.displayName, systemImage: "flame.fill")
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(severity.color.opacity(0.15))
+                Label(severity.displayName.uppercased(), systemImage: "flame.fill")
+                    .font(.cxData)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(severity.color.opacity(0.1))
                     .foregroundStyle(severity.color)
-                    .cornerRadius(10)
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
-                Label("User Report", systemImage: "person.fill")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.purple.opacity(0.1))
-                    .foregroundStyle(.purple)
-                    .cornerRadius(10)
+                Label("USER REPORT", systemImage: "person.fill")
+                    .font(.cxData)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.cxSourceUser.opacity(0.1))
+                    .foregroundStyle(.cxSourceUser)
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
                 Spacer()
             }
 
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.cxBody)
+                .fontWeight(.semibold)
+                .foregroundStyle(.cxText)
 
             HStack {
                 Image(systemName: eventType.icon)
-                    .font(.caption)
-                Text(eventType.displayName)
-                    .font(.caption)
+                    .font(.system(size: 10))
+                Text(eventType.displayName.uppercased())
+                    .font(.cxData)
                 Spacer()
                 Image(systemName: "flag.fill")
-                    .font(.caption)
+                    .font(.system(size: 10))
                 Text(country.uppercased())
-                    .font(.caption.weight(.medium))
+                    .font(.cxData)
+                    .fontWeight(.medium)
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.cxTextSecondary)
         }
-        .padding()
-        .background(.gray.opacity(0.08))
-        .cornerRadius(14)
+        .padding(CXConstants.cardPadding)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

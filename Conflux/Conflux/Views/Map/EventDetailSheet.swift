@@ -13,51 +13,54 @@ struct EventDetailSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 8) {
                             // Severity badge
-                            Label(event.severityLabel, systemImage: event.severityIcon)
-                                .font(.caption.weight(.bold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(event.severityColor.opacity(0.15))
+                            Label(event.severityLabel.uppercased(), systemImage: event.severityIcon)
+                                .font(.cxData)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(event.severityColor.opacity(0.1))
                                 .foregroundStyle(event.severityColor)
-                                .cornerRadius(20)
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 20)
+                                    RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius)
                                         .stroke(event.severityColor.opacity(0.4), lineWidth: 1)
                                 )
 
                             // Source badge
-                            Label(event.sourceDisplayName, systemImage: event.sourceIcon)
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                            Label(event.sourceDisplayName.uppercased(), systemImage: event.sourceIcon)
+                                .font(.cxData)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
                                 .background(event.sourceColor.opacity(0.1))
                                 .foregroundStyle(event.sourceColor)
-                                .cornerRadius(20)
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
 
                             Spacer()
                         }
 
                         Text(event.title)
-                            .font(.title3.bold())
+                            .font(.cxTitle)
+                            .foregroundStyle(.cxText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.horizontal)
 
-                    Divider()
+                    Rectangle()
+                        .fill(Color.cxBorder)
+                        .frame(height: 1)
 
                     // Meta info grid
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        MetaCard(icon: "calendar", label: "Date", value: event.formattedDate)
-                        MetaCard(icon: "flag.fill", label: "Country", value: event.country)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                        MetaCard(icon: "calendar", label: "DATE", value: event.formattedDate)
+                        MetaCard(icon: "flag.fill", label: "COUNTRY", value: event.country)
                         if let locName = event.locationName, !locName.isEmpty {
-                            MetaCard(icon: "mappin.circle.fill", label: "Location", value: locName)
+                            MetaCard(icon: "mappin.circle.fill", label: "LOCATION", value: locName)
                         }
-                        MetaCard(icon: "exclamationmark.triangle.fill", label: "Type", value: event.eventTypeDisplayName)
+                        MetaCard(icon: "exclamationmark.triangle.fill", label: "TYPE", value: event.eventTypeDisplayName)
                         if let sources = event.numSources, sources > 0 {
-                            MetaCard(icon: "newspaper.fill", label: "Sources", value: "\(sources)")
+                            MetaCard(icon: "newspaper.fill", label: "SOURCES", value: "\(sources)")
                         }
                         if let articles = event.numArticles, articles > 0 {
-                            MetaCard(icon: "doc.text.fill", label: "Articles", value: "\(articles)")
+                            MetaCard(icon: "doc.text.fill", label: "ARTICLES", value: "\(articles)")
                         }
                     }
                     .padding(.horizontal)
@@ -65,20 +68,26 @@ struct EventDetailSheet: View {
                     // Actors
                     if let actors = event.actors, !actors.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Actors", systemImage: "person.2.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                            Label("ACTORS", systemImage: "person.2.fill")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextTertiary)
+                                .tracking(1)
                                 .padding(.horizontal)
 
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
+                                HStack(spacing: 6) {
                                     ForEach(actors, id: \.self) { actor in
                                         Text(actor)
-                                            .font(.caption)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 5)
-                                            .background(.gray.opacity(0.12))
-                                            .cornerRadius(12)
+                                            .font(.cxData)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.cxSurface)
+                                            .foregroundStyle(.cxText)
+                                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: CXConstants.chipCornerRadius)
+                                                    .stroke(Color.cxBorder, lineWidth: 1)
+                                            )
                                     }
                                 }
                                 .padding(.horizontal)
@@ -89,27 +98,34 @@ struct EventDetailSheet: View {
                     // Description
                     if let desc = event.description, !desc.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Details", systemImage: "text.alignleft")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                            Label("DETAILS", systemImage: "text.alignleft")
+                                .font(.cxLabel)
+                                .foregroundStyle(.cxTextTertiary)
+                                .tracking(1)
 
                             if desc.hasPrefix("http") {
                                 Link(destination: URL(string: desc) ?? URL(string: "https://gdeltproject.org")!) {
                                     HStack {
                                         Image(systemName: "link")
-                                        Text("View Source Article")
+                                        Text("VIEW SOURCE ARTICLE")
+                                            .font(.cxData)
+                                            .tracking(0.5)
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
                                     }
-                                    .font(.subheadline)
                                     .padding()
-                                    .background(.blue.opacity(0.1))
-                                    .foregroundStyle(.blue)
-                                    .cornerRadius(12)
+                                    .background(Color.cxSurface)
+                                    .foregroundStyle(.cxAccent)
+                                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                            .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1)
+                                    )
                                 }
                             } else {
                                 Text(desc)
-                                    .font(.body)
+                                    .font(.cxBody)
+                                    .foregroundStyle(.cxText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -118,9 +134,10 @@ struct EventDetailSheet: View {
 
                     // Mini map
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("Location", systemImage: "map.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                        Label("LOCATION", systemImage: "map")
+                            .font(.cxLabel)
+                            .foregroundStyle(.cxTextTertiary)
+                            .tracking(1)
                             .padding(.horizontal)
 
                         Map(initialPosition: .region(
@@ -132,44 +149,51 @@ struct EventDetailSheet: View {
                             Annotation("", coordinate: event.coordinate, anchor: .center) {
                                 ZStack {
                                     Circle()
-                                        .fill(event.severityColor.opacity(0.3))
-                                        .frame(width: 40, height: 40)
+                                        .fill(event.severityColor.opacity(0.2))
+                                        .frame(width: 36, height: 36)
                                     Image(systemName: event.severityIcon)
                                         .foregroundStyle(event.severityColor)
                                         .font(.title3.bold())
                                 }
                             }
                         }
+                        .mapStyle(.imagery(elevation: .flat))
                         .frame(height: 180)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                .stroke(Color.cxBorder, lineWidth: 1)
+                        )
                         .padding(.horizontal)
                     }
 
                     // Coordinates
                     HStack {
                         Spacer()
-                        Text(String(format: "%.4f°N, %.4f°E",
+                        Text(String(format: "%.4f\u{00B0}N, %.4f\u{00B0}E",
                                     event.location.coordinates[1],
                                     event.location.coordinates[0]))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.cxData)
+                            .foregroundStyle(.cxAccent)
                         Spacer()
                     }
 
-                    // Event ID for debugging
-                    Text("ID: \(event.id)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    // Event ID
+                    Text("EVT-ID: \(event.id)")
+                        .font(.cxData)
+                        .foregroundStyle(.cxTextTertiary)
                         .padding(.horizontal)
                         .padding(.bottom)
                 }
                 .padding(.top)
             }
+            .background(Color.cxBackground)
             .navigationTitle(event.relativeDate)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(.cxAccent)
                 }
             }
         }
@@ -186,15 +210,21 @@ struct MetaCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(label, systemImage: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.cxLabel)
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .font(.cxData)
+                .foregroundStyle(.cxText)
                 .lineLimit(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.gray.opacity(0.08))
-        .cornerRadius(12)
+        .padding(CXConstants.cardPadding)
+        .background(Color.cxSurface)
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+        )
     }
 }

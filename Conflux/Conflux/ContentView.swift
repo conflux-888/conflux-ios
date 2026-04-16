@@ -15,22 +15,23 @@ struct ContentView: View {
 struct MainTabView: View {
     var body: some View {
         TabView {
-            Tab("Map", systemImage: "map.fill") {
+            Tab("Map", systemImage: "map") {
                 ConfluxMapView()
             }
 
-            Tab("Events", systemImage: "newspaper.fill") {
+            Tab("Events", systemImage: "list.bullet.rectangle") {
                 EventsListView()
             }
 
-            Tab("Report", systemImage: "plus.circle.fill") {
+            Tab("Report", systemImage: "plus.app") {
                 ReportFormView()
             }
 
-            Tab("Profile", systemImage: "person.fill") {
+            Tab("Profile", systemImage: "person") {
                 ProfileView()
             }
         }
+        .tint(Color.cxAccent)
     }
 }
 
