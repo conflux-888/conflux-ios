@@ -63,6 +63,37 @@ struct ConfluxMapView: View {
 
                 Spacer()
 
+                // My location button
+                HStack {
+                    Spacer()
+                    if locationManager.lastLocation != nil {
+                        Button {
+                            if let coord = locationManager.lastLocation {
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    position = .region(MKCoordinateRegion(
+                                        center: coord,
+                                        span: MKCoordinateSpan(latitudeDelta: 1, longitudeDelta: 1)
+                                    ))
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.cxAccent)
+                                .frame(width: 40, height: 40)
+                                .background(Color.cxSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                        .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                                )
+                                .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+
                 // Stats banner
                 if !events.isEmpty {
                     statsBanner
