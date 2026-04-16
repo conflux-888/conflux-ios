@@ -29,7 +29,7 @@ class NotificationManager {
         Task { await poll() }
 
         // Poll every 60 seconds — must be on main RunLoop
-        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
                 await self.poll()
