@@ -60,7 +60,7 @@ struct ConfluxMapView: View {
                     .mapControlVisibility(.visible)
             }
             .safeAreaInset(edge: .top) {
-                Color.clear.frame(height: 120)
+                Color.clear.frame(height: 140)
             }
             .ignoresSafeArea(edges: .all)
 
