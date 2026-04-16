@@ -59,22 +59,18 @@ struct ConfluxMapView: View {
             }
             .ignoresSafeArea(edges: .all)
 
-            // Top overlay
+            // Top: compact filter bar
             VStack(spacing: 0) {
-                // Filter bar
                 filterBar
-                    .background(Color.cxBackgroundPure.opacity(0.85))
-
+                    .background(Color.cxBackgroundPure.opacity(0.8))
                 Spacer()
+            }
 
-                // Bottom controls: scale bar (left) + location button (right)
-                HStack(alignment: .bottom) {
-                    // Scale indicator
-                    MapScaleView(position: position)
-
+            // Right side: location button (Google Maps position)
+            VStack {
+                Spacer()
+                HStack {
                     Spacer()
-
-                    // My location button (Google Maps style)
                     if locationManager.lastLocation != nil {
                         Button {
                             if let coord = locationManager.lastLocation {
@@ -87,26 +83,41 @@ struct ConfluxMapView: View {
                             }
                         } label: {
                             Image(systemName: "location.fill")
-                                .font(.system(size: 16))
+                                .font(.system(size: 15))
                                 .foregroundStyle(.cxAccent)
-                                .frame(width: 44, height: 44)
-                                .background(Color.cxSurface.opacity(0.95))
+                                .frame(width: 40, height: 40)
+                                .background(Color.cxBackgroundPure.opacity(0.8))
                                 .clipShape(Circle())
-                                .overlay(
-                                    Circle().stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
-                                )
-                                .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
+                                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.trailing, 14)
+                .padding(.bottom, 100)
+            }
 
-                // Stats banner
-                if !events.isEmpty {
-                    statsBanner
-                        .padding(.bottom, 90)
+            // Bottom-left: HUD stats + scale
+            VStack {
+                Spacer()
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Severity counts (inline HUD style, no box)
+                        if !events.isEmpty {
+                            HStack(spacing: 10) {
+                                hudStat(filteredEvents.filter { $0.severity == "critical" }.count, color: .cxCritical)
+                                hudStat(filteredEvents.filter { $0.severity == "high" }.count, color: .cxHigh)
+                                hudStat(filteredEvents.filter { $0.severity == "medium" }.count, color: .cxMedium)
+                                hudStat(filteredEvents.filter { $0.severity == "low" }.count, color: .cxLow)
+                            }
+                        }
+
+                        // Scale
+                        MapScaleView(position: position)
+                    }
+                    Spacer()
                 }
+                .padding(.leading, 14)
+                .padding(.bottom, 92)
             }
 
             // Loading overlay
@@ -116,19 +127,15 @@ struct ConfluxMapView: View {
                     HStack(spacing: 8) {
                         ProgressView()
                             .tint(.cxAccent)
-                        Text("LOADING EVENTS")
+                        Text("LOADING")
                             .font(.cxData)
                             .foregroundStyle(.cxText)
                             .tracking(1)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.cxSurface)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.cxBackgroundPure.opacity(0.8))
                     .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
-                            .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
-                    )
                     .padding(.bottom, 100)
                 }
             }
@@ -144,72 +151,45 @@ struct ConfluxMapView: View {
         .onChange(of: severityFilter) { _, _ in Task { await loadEvents() } }
     }
 
-    // MARK: - Filter Bar
+    // MARK: - Filter Bar (single compact row)
 
     private var filterBar: some View {
-        VStack(spacing: 0) {
-            // Source row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    Text("SOURCE")
-                        .font(.cxLabel)
-                        .foregroundStyle(.cxTextTertiary)
-                        .tracking(1)
-                    ForEach(SourceFilter.allCases) { filter in
-                        SourceChip(filter: filter, isSelected: sourceFilter == filter) {
-                            sourceFilter = filter
-                        }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 5) {
+                ForEach(SourceFilter.allCases) { filter in
+                    SourceChip(filter: filter, isSelected: sourceFilter == filter) {
+                        sourceFilter = filter
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-            }
 
-            Rectangle()
-                .fill(Color.cxBorder)
-                .frame(height: 1)
+                Rectangle()
+                    .fill(Color.cxTextTertiary.opacity(0.3))
+                    .frame(width: 1, height: 16)
+                    .padding(.horizontal, 2)
 
-            // Severity row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    Text("SEVERITY")
-                        .font(.cxLabel)
-                        .foregroundStyle(.cxTextTertiary)
-                        .tracking(1)
-                    ForEach(SeverityFilter.allCases) { filter in
-                        SeverityChip(filter: filter, isSelected: severityFilter == filter) {
-                            severityFilter = filter
-                        }
+                ForEach(SeverityFilter.allCases) { filter in
+                    SeverityChip(filter: filter, isSelected: severityFilter == filter) {
+                        severityFilter = filter
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
     }
 
-    // MARK: - Stats Banner
+    // MARK: - HUD Stat
 
-    private var statsBanner: some View {
-        HStack(spacing: 16) {
-            StatBadge(count: filteredEvents.filter { $0.severity == "critical" }.count,
-                      label: "CRITICAL", color: .cxCritical)
-            StatBadge(count: filteredEvents.filter { $0.severity == "high" }.count,
-                      label: "HIGH", color: .cxHigh)
-            StatBadge(count: filteredEvents.filter { $0.severity == "medium" }.count,
-                      label: "MEDIUM", color: .cxMedium)
-            StatBadge(count: filteredEvents.filter { $0.source == "user_report" }.count,
-                      label: "USER", color: .cxSourceUser)
+    private func hudStat(_ count: Int, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+                .shadow(color: color.opacity(0.6), radius: 3)
+            Text("\(count)")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(color)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.cxBackgroundPure.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
-                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
-        )
-        .padding(.horizontal)
     }
 
     // MARK: - Data Loading
@@ -348,25 +328,6 @@ struct SeverityChip: View {
     }
 }
 
-// MARK: - Stats Badge
-
-struct StatBadge: View {
-    let count: Int
-    let label: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text("\(count)")
-                .font(.cxMono)
-                .foregroundStyle(color)
-            Text(label)
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(.cxTextTertiary)
-                .tracking(0.5)
-        }
-    }
-}
 
 // MARK: - Map Scale View
 
@@ -403,25 +364,14 @@ struct MapScaleView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // Scale bar line
-            HStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.cxAccent)
-                    .frame(width: 60, height: 2)
-                Rectangle()
-                    .fill(Color.cxAccent)
-                    .frame(width: 1, height: 6)
-            }
-
+        VStack(alignment: .leading, spacing: 1) {
+            Rectangle()
+                .fill(Color.cxText.opacity(0.7))
+                .frame(width: 50, height: 1)
             Text(scaleText)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.cxText)
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(.cxText.opacity(0.7))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.cxBackgroundPure.opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
     }
 }
 
