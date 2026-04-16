@@ -12,12 +12,12 @@ extension Color {
     static let cxSurfaceElevated = Color(red: 0.102, green: 0.125, blue: 0.208) // #1A2035
 
     // Borders
-    static let cxBorder = Color(red: 0, green: 0.898, blue: 1).opacity(0.12) // cyan @ 12%
-    static let cxBorderActive = Color(red: 0, green: 0.898, blue: 1).opacity(0.35) // cyan @ 35%
+    static let cxBorder = Color(red: 0, green: 0.898, blue: 1, opacity: 0.12) // cyan @ 12%
+    static let cxBorderActive = Color(red: 0, green: 0.898, blue: 1, opacity: 0.35) // cyan @ 35%
 
     // Accent
     static let cxAccent = Color(red: 0, green: 0.898, blue: 1) // #00E5FF
-    static let cxAccentDim = Color(red: 0, green: 0.898, blue: 1).opacity(0.15)
+    static let cxAccentDim = Color(red: 0, green: 0.898, blue: 1, opacity: 0.15)
     static let cxWarning = Color(red: 1, green: 0.722, blue: 0) // #FFB800
 
     // Severity
@@ -34,6 +34,29 @@ extension Color {
     // Sources
     static let cxSourceGDELT = Color(red: 0, green: 0.898, blue: 1) // #00E5FF
     static let cxSourceUser = Color(red: 0.733, green: 0.525, blue: 0.988) // #BB86FC
+}
+
+// MARK: - ShapeStyle Bridging (allows .cxAccent in .foregroundStyle() etc.)
+
+extension ShapeStyle where Self == Color {
+    static var cxBackground: Color { Color.cxBackground }
+    static var cxBackgroundPure: Color { Color.cxBackgroundPure }
+    static var cxSurface: Color { Color.cxSurface }
+    static var cxSurfaceElevated: Color { Color.cxSurfaceElevated }
+    static var cxBorder: Color { Color.cxBorder }
+    static var cxBorderActive: Color { Color.cxBorderActive }
+    static var cxAccent: Color { Color.cxAccent }
+    static var cxAccentDim: Color { Color.cxAccentDim }
+    static var cxWarning: Color { Color.cxWarning }
+    static var cxCritical: Color { Color.cxCritical }
+    static var cxHigh: Color { Color.cxHigh }
+    static var cxMedium: Color { Color.cxMedium }
+    static var cxLow: Color { Color.cxLow }
+    static var cxText: Color { Color.cxText }
+    static var cxTextSecondary: Color { Color.cxTextSecondary }
+    static var cxTextTertiary: Color { Color.cxTextTertiary }
+    static var cxSourceGDELT: Color { Color.cxSourceGDELT }
+    static var cxSourceUser: Color { Color.cxSourceUser }
 }
 
 // MARK: - Typography
