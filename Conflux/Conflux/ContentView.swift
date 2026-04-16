@@ -2,12 +2,27 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AuthManager.self) private var authManager
+    @Environment(NotificationManager.self) private var notifManager
 
     var body: some View {
-        if authManager.isLoggedIn {
-            MainTabView()
-        } else {
-            LoginView()
+        ZStack(alignment: .top) {
+            if authManager.isLoggedIn {
+                MainTabView()
+            } else {
+                LoginView()
+            }
+
+            // In-app notification banner
+            if let banner = notifManager.newBanner {
+                NotificationBannerView(
+                    notification: banner,
+                    onTap: { notifManager.dismissBanner() },
+                    onDismiss: { notifManager.dismissBanner() }
+                )
+                .appear()
+                .padding(.top, 50)
+                .zIndex(100)
+            }
         }
     }
 }
@@ -42,4 +57,5 @@ struct MainTabView: View {
 #Preview {
     ContentView()
         .environment(AuthManager())
+        .environment(NotificationManager())
 }

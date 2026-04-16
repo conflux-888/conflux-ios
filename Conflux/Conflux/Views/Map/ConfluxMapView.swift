@@ -3,6 +3,7 @@ import MapKit
 
 struct ConfluxMapView: View {
     @Environment(AuthManager.self) private var authManager
+    @Environment(AppLocationManager.self) private var locationManager
 
     @State private var events: [Event] = []
     @State private var selectedEvent: Event?
@@ -30,28 +31,99 @@ struct ConfluxMapView: View {
         ZStack(alignment: .top) {
             // Map - dark satellite imagery
             Map(position: $position) {
+                // Event pins
                 ForEach(filteredEvents) { event in
                     Annotation("", coordinate: event.coordinate, anchor: .center) {
                         EventPinView(event: event)
                             .onTapGesture { selectedEvent = event }
                     }
                 }
+
+                // User location + alert radius
+                if let userCoord = locationManager.lastLocation {
+                    // Alert radius circle (50km default)
+                    MapCircle(center: userCoord, radius: 50_000)
+                        .foregroundStyle(Color.cxAccent.opacity(0.06))
+                        .stroke(Color.cxAccent.opacity(0.25), lineWidth: 1)
+
+                    // User location pin
+                    Annotation("", coordinate: userCoord, anchor: .center) {
+                        UserLocationPin()
+                    }
+                }
             }
             .mapStyle(.imagery(elevation: .flat))
+            .mapControls {
+                MapCompass()
+                    .mapControlVisibility(.visible)
+                MapScaleView()
+                    .mapControlVisibility(.visible)
+            }
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: 140)
+            }
             .ignoresSafeArea(edges: .all)
 
-            // Top overlay
+            // Top: compact filter bar
             VStack(spacing: 0) {
-                // Filter bar
                 filterBar
-                    .background(Color.cxBackgroundPure.opacity(0.85))
-
+                    .background(Color.cxBackgroundPure.opacity(0.8))
                 Spacer()
+            }
 
-                // Stats banner
-                if !events.isEmpty {
-                    statsBanner
-                        .padding(.bottom, 90)
+            // Right side: location button (Google Maps position)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    if locationManager.lastLocation != nil {
+                        Button {
+                            if let coord = locationManager.lastLocation {
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    position = .region(MKCoordinateRegion(
+                                        center: coord,
+                                        span: MKCoordinateSpan(latitudeDelta: 1, longitudeDelta: 1)
+                                    ))
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.cxAccent)
+                                .frame(width: 40, height: 40)
+                                .background(Color.cxBackgroundPure.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                        }
+                    }
+                }
+                .padding(.trailing, 14)
+                .padding(.bottom, 100)
+            }
+
+            // Bottom-center: severity stats panel
+            if !events.isEmpty {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 16) {
+                        StatBadge(count: filteredEvents.filter { $0.severity == "critical" }.count,
+                                  label: "CRITICAL", color: .cxCritical)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "high" }.count,
+                                  label: "HIGH", color: .cxHigh)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "medium" }.count,
+                                  label: "MEDIUM", color: .cxMedium)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "low" }.count,
+                                  label: "LOW", color: .cxLow)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.cxBackgroundPure.opacity(0.85))
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                            .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                    )
+                    .padding(.bottom, 90)
                 }
             }
 
@@ -62,19 +134,15 @@ struct ConfluxMapView: View {
                     HStack(spacing: 8) {
                         ProgressView()
                             .tint(.cxAccent)
-                        Text("LOADING EVENTS")
+                        Text("LOADING")
                             .font(.cxData)
                             .foregroundStyle(.cxText)
                             .tracking(1)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.cxSurface)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.cxBackgroundPure.opacity(0.8))
                     .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
-                            .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
-                    )
                     .padding(.bottom, 100)
                 }
             }
@@ -85,7 +153,16 @@ struct ConfluxMapView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.cxBackground)
         }
-        .task { await loadEvents() }
+        .task {
+            await loadEvents()
+            // Center on user location (~500km view)
+            if let coord = locationManager.lastLocation {
+                position = .region(MKCoordinateRegion(
+                    center: coord,
+                    span: MKCoordinateSpan(latitudeDelta: 18, longitudeDelta: 18)
+                ))
+            }
+        }
         .onChange(of: sourceFilter) { _, _ in Task { await loadEvents() } }
         .onChange(of: severityFilter) { _, _ in Task { await loadEvents() } }
     }
@@ -134,29 +211,25 @@ struct ConfluxMapView: View {
         }
     }
 
-    // MARK: - Stats Banner
+// MARK: - Stats Badge
 
-    private var statsBanner: some View {
-        HStack(spacing: 16) {
-            StatBadge(count: filteredEvents.filter { $0.severity == "critical" }.count,
-                      label: "CRITICAL", color: .cxCritical)
-            StatBadge(count: filteredEvents.filter { $0.severity == "high" }.count,
-                      label: "HIGH", color: .cxHigh)
-            StatBadge(count: filteredEvents.filter { $0.severity == "medium" }.count,
-                      label: "MEDIUM", color: .cxMedium)
-            StatBadge(count: filteredEvents.filter { $0.source == "user_report" }.count,
-                      label: "USER", color: .cxSourceUser)
+struct StatBadge: View {
+    let count: Int
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(count)")
+                .font(.cxMono)
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.cxBackgroundPure.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
-                .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
-        )
-        .padding(.horizontal)
     }
+}
 
     // MARK: - Data Loading
 
@@ -178,6 +251,44 @@ struct ConfluxMapView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+// MARK: - User Location Pin
+
+struct UserLocationPin: View {
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            // Outer pulse ring
+            Circle()
+                .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1.5)
+                .frame(width: 32, height: 32)
+                .scaleEffect(isPulsing ? 1.4 : 1.0)
+                .opacity(isPulsing ? 0 : 0.6)
+
+            // Middle glow
+            Circle()
+                .fill(Color.cxAccent.opacity(0.15))
+                .frame(width: 24, height: 24)
+
+            // Inner dot
+            Circle()
+                .fill(Color.cxAccent)
+                .frame(width: 10, height: 10)
+                .shadow(color: .cxAccent.opacity(0.6), radius: 6)
+
+            // Center white dot
+            Circle()
+                .fill(.white)
+                .frame(width: 4, height: 4)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: false)) {
+                isPulsing = true
+            }
+        }
     }
 }
 
@@ -256,25 +367,6 @@ struct SeverityChip: View {
     }
 }
 
-// MARK: - Stats Badge
-
-struct StatBadge: View {
-    let count: Int
-    let label: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text("\(count)")
-                .font(.cxMono)
-                .foregroundStyle(color)
-            Text(label)
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(.cxTextTertiary)
-                .tracking(0.5)
-        }
-    }
-}
 
 #Preview {
     ConfluxMapView()

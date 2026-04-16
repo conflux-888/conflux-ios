@@ -24,6 +24,7 @@ struct ReportFormView: View {
     @State private var errorMessage: String?
     @State private var showSuccess = false
     @State private var step = 1
+    @State private var showFullscreenMap = false
 
     var formValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty && !country.isEmpty
@@ -67,11 +68,27 @@ struct ReportFormView: View {
                                     .shadow(color: .cxAccent.opacity(0.5), radius: 2)
                             }
 
-                            Text("PAN MAP — CROSSHAIR MARKS SELECTED POINT")
-                                .font(.cxLabel)
-                                .foregroundStyle(.cxTextTertiary)
-                                .tracking(0.5)
-                                .frame(maxWidth: .infinity, alignment: .center)
+                            Button {
+                                showFullscreenMap = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.system(size: 10))
+                                    Text("EXPAND MAP")
+                                        .font(.cxData)
+                                        .tracking(0.5)
+                                }
+                                .foregroundStyle(.cxAccent)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color.cxSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                        .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -263,6 +280,12 @@ struct ReportFormView: View {
             } message: {
                 Text("Your report has been submitted and will be reviewed.")
             }
+            .fullScreenCover(isPresented: $showFullscreenMap) {
+                FullscreenMapPicker(
+                    coordinate: $selectedCoordinate,
+                    mapPosition: $mapPosition
+                )
+            }
         }
     }
 
@@ -365,6 +388,96 @@ struct EventPreviewCard: View {
             RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
                 .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Fullscreen Map Picker
+
+struct FullscreenMapPicker: View {
+    @Binding var coordinate: CLLocationCoordinate2D
+    @Binding var mapPosition: MapCameraPosition
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Map(position: $mapPosition) {
+                Annotation("Event", coordinate: coordinate, anchor: .bottom) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.cxAccent)
+                        .shadow(color: .cxAccent.opacity(0.5), radius: 4)
+                }
+            }
+            .mapStyle(.imagery(elevation: .flat))
+            .mapControls {
+                MapCompass()
+                    .mapControlVisibility(.visible)
+                MapScaleView()
+                    .mapControlVisibility(.visible)
+            }
+            .onMapCameraChange { context in
+                coordinate = context.region.center
+            }
+            .ignoresSafeArea()
+
+            // Crosshair
+            Image(systemName: "plus")
+                .font(.title)
+                .foregroundStyle(.cxAccent)
+                .shadow(color: .cxAccent.opacity(0.5), radius: 3)
+
+            // Bottom bar: coordinates + confirm
+            VStack {
+                Spacer()
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(format: "LAT %.4f", coordinate.latitude))
+                            .font(.cxMono)
+                            .foregroundStyle(.cxAccent)
+                        Text(String(format: "LNG %.4f", coordinate.longitude))
+                            .font(.cxMono)
+                            .foregroundStyle(.cxAccent)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("CONFIRM")
+                            .font(.cxTitle)
+                            .tracking(1)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.cxAccent)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                    }
+                }
+                .padding(16)
+                .background(Color.cxBackgroundPure.opacity(0.85))
+            }
+
+            // Close button top-left
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.cxText)
+                            .frame(width: 36, height: 36)
+                            .background(Color.cxBackgroundPure.opacity(0.8))
+                            .clipShape(Circle())
+                    }
+                    Spacer()
+                }
+                .padding(.leading, 16)
+                .padding(.top, 54)
+                Spacer()
+            }
+        }
     }
 }
 
