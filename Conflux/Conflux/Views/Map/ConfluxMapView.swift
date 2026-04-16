@@ -101,23 +101,30 @@ struct ConfluxMapView: View {
                 .padding(.bottom, 100)
             }
 
-            // Bottom-left: HUD stats + scale
-            VStack {
-                Spacer()
-                HStack(alignment: .bottom) {
-                    // Severity counts (inline HUD style, no box)
-                    if !events.isEmpty {
-                        HStack(spacing: 10) {
-                            hudStat(filteredEvents.filter { $0.severity == "critical" }.count, color: .cxCritical)
-                            hudStat(filteredEvents.filter { $0.severity == "high" }.count, color: .cxHigh)
-                            hudStat(filteredEvents.filter { $0.severity == "medium" }.count, color: .cxMedium)
-                            hudStat(filteredEvents.filter { $0.severity == "low" }.count, color: .cxLow)
-                        }
-                    }
+            // Bottom-center: severity stats panel
+            if !events.isEmpty {
+                VStack {
                     Spacer()
+                    HStack(spacing: 16) {
+                        StatBadge(count: filteredEvents.filter { $0.severity == "critical" }.count,
+                                  label: "CRITICAL", color: .cxCritical)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "high" }.count,
+                                  label: "HIGH", color: .cxHigh)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "medium" }.count,
+                                  label: "MEDIUM", color: .cxMedium)
+                        StatBadge(count: filteredEvents.filter { $0.severity == "low" }.count,
+                                  label: "LOW", color: .cxLow)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.cxBackgroundPure.opacity(0.85))
+                    .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                            .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                    )
+                    .padding(.bottom, 90)
                 }
-                .padding(.leading, 14)
-                .padding(.bottom, 92)
             }
 
             // Loading overlay
@@ -204,19 +211,25 @@ struct ConfluxMapView: View {
         }
     }
 
-    // MARK: - HUD Stat
+// MARK: - Stats Badge
 
-    private func hudStat(_ count: Int, color: Color) -> some View {
-        HStack(spacing: 3) {
-            Circle()
-                .fill(color)
-                .frame(width: 6, height: 6)
-                .shadow(color: color.opacity(0.6), radius: 3)
+struct StatBadge: View {
+    let count: Int
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
             Text("\(count)")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.cxMono)
                 .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.cxTextTertiary)
+                .tracking(0.5)
         }
     }
+}
 
     // MARK: - Data Loading
 
