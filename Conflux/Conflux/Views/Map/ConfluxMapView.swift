@@ -54,7 +54,7 @@ struct ConfluxMapView: View {
                 }
             }
             .mapStyle(.imagery(elevation: .flat))
-            .onMapCameraChange { context in
+            .onMapCameraChange(frequency: .continuous) { context in
                 currentSpan = context.region.span
             }
             .ignoresSafeArea(edges: .all)
@@ -112,7 +112,7 @@ struct ConfluxMapView: View {
                         }
 
                         // Scale
-                        MapScaleView(position: position)
+                        MapScaleView(latitudeDelta: currentSpan.latitudeDelta)
                     }
                     Spacer()
                 }
@@ -349,45 +349,75 @@ struct SeverityChip: View {
 // MARK: - Map Scale View
 
 struct MapScaleView: View {
-    let position: MapCameraPosition
+    let latitudeDelta: Double
 
-    private var scaleText: String {
-        guard let region = position.region else { return "" }
-        // 1 degree latitude ≈ 111km
-        let spanKm = region.span.latitudeDelta * 111.0
-        // Scale bar represents roughly 1/5 of visible area
-        let barKm = spanKm / 5.0
+    // Predefined "nice" distances in meters
+    private static let niceDistances: [(meters: Double, label: String)] = [
+        (10, "10 m"), (20, "20 m"), (50, "50 m"),
+        (100, "100 m"), (200, "200 m"), (500, "500 m"),
+        (1_000, "1 km"), (2_000, "2 km"), (5_000, "5 km"),
+        (10_000, "10 km"), (20_000, "20 km"), (50_000, "50 km"),
+        (100_000, "100 km"), (200_000, "200 km"), (500_000, "500 km"),
+        (1_000_000, "1000 km"), (2_000_000, "2000 km"), (5_000_000, "5000 km"),
+    ]
 
-        if barKm >= 1000 {
-            let rounded = roundToNice(barKm / 1000)
-            return "\(formatNumber(rounded)) km"
-        } else if barKm >= 1 {
-            let rounded = roundToNice(barKm)
-            return "\(formatNumber(rounded)) km"
-        } else {
-            let meters = barKm * 1000
-            let rounded = roundToNice(meters)
-            return "\(formatNumber(rounded)) m"
+    // Target bar width range (points)
+    private static let minBarWidth: CGFloat = 50
+    private static let maxBarWidth: CGFloat = 120
+
+    // 1 degree latitude ≈ 111,320 meters
+    private static let metersPerDegree: Double = 111_320
+
+    private var scaleInfo: (barWidth: CGFloat, label: String) {
+        // Approximate screen height in points (iPhone)
+        let screenHeight: Double = 800
+
+        // Meters per screen point at current zoom
+        let totalMeters = latitudeDelta * Self.metersPerDegree
+        let metersPerPoint = totalMeters / screenHeight
+
+        // Find the "nice" distance whose bar width falls in our target range
+        for entry in Self.niceDistances {
+            let barWidth = CGFloat(entry.meters / metersPerPoint)
+            if barWidth >= Self.minBarWidth && barWidth <= Self.maxBarWidth {
+                return (barWidth, entry.label)
+            }
         }
-    }
 
-    private func roundToNice(_ value: Double) -> Double {
-        let steps: [Double] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-        return steps.last(where: { $0 <= value }) ?? steps.first!
-    }
-
-    private func formatNumber(_ value: Double) -> String {
-        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
+        // Fallback: pick the closest one
+        let target: CGFloat = 80
+        var best = Self.niceDistances[0]
+        var bestDiff: CGFloat = .infinity
+        for entry in Self.niceDistances {
+            let barWidth = CGFloat(entry.meters / metersPerPoint)
+            let diff = abs(barWidth - target)
+            if diff < bestDiff {
+                bestDiff = diff
+                best = entry
+            }
+        }
+        let barWidth = CGFloat(best.meters / metersPerPoint)
+        return (max(30, min(barWidth, 150)), best.label)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Rectangle()
-                .fill(Color.cxText.opacity(0.7))
-                .frame(width: 50, height: 1)
-            Text(scaleText)
+        let info = scaleInfo
+        VStack(alignment: .leading, spacing: 2) {
+            // Scale bar with end caps
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.cxText.opacity(0.8))
+                    .frame(width: 1, height: 5)
+                Rectangle()
+                    .fill(Color.cxText.opacity(0.8))
+                    .frame(width: info.barWidth, height: 1.5)
+                Rectangle()
+                    .fill(Color.cxText.opacity(0.8))
+                    .frame(width: 1, height: 5)
+            }
+            Text(info.label)
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.cxText.opacity(0.7))
+                .foregroundStyle(.cxText.opacity(0.8))
         }
     }
 }
