@@ -18,7 +18,6 @@ struct ConfluxMapView: View {
             span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
         )
     )
-    @State private var currentSpan: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
 
     var filteredEvents: [Event] {
         events.filter { event in
@@ -54,8 +53,9 @@ struct ConfluxMapView: View {
                 }
             }
             .mapStyle(.imagery(elevation: .flat))
-            .onMapCameraChange { context in
-                currentSpan = context.region.span
+            .mapControls {
+                MapCompass()
+                MapScaleView()
             }
             .ignoresSafeArea(edges: .all)
 
@@ -100,19 +100,14 @@ struct ConfluxMapView: View {
             VStack {
                 Spacer()
                 HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        // Severity counts (inline HUD style, no box)
-                        if !events.isEmpty {
-                            HStack(spacing: 10) {
-                                hudStat(filteredEvents.filter { $0.severity == "critical" }.count, color: .cxCritical)
-                                hudStat(filteredEvents.filter { $0.severity == "high" }.count, color: .cxHigh)
-                                hudStat(filteredEvents.filter { $0.severity == "medium" }.count, color: .cxMedium)
-                                hudStat(filteredEvents.filter { $0.severity == "low" }.count, color: .cxLow)
-                            }
+                    // Severity counts (inline HUD style, no box)
+                    if !events.isEmpty {
+                        HStack(spacing: 10) {
+                            hudStat(filteredEvents.filter { $0.severity == "critical" }.count, color: .cxCritical)
+                            hudStat(filteredEvents.filter { $0.severity == "high" }.count, color: .cxHigh)
+                            hudStat(filteredEvents.filter { $0.severity == "medium" }.count, color: .cxMedium)
+                            hudStat(filteredEvents.filter { $0.severity == "low" }.count, color: .cxLow)
                         }
-
-                        // Scale
-                        MapScaleView(latitudeDelta: currentSpan.latitudeDelta)
                     }
                     Spacer()
                 }
@@ -345,82 +340,6 @@ struct SeverityChip: View {
     }
 }
 
-
-// MARK: - Map Scale View
-
-struct MapScaleView: View {
-    let latitudeDelta: Double
-
-    // Predefined "nice" distances in meters
-    private static let niceDistances: [(meters: Double, label: String)] = [
-        (10, "10 m"), (20, "20 m"), (50, "50 m"),
-        (100, "100 m"), (200, "200 m"), (500, "500 m"),
-        (1_000, "1 km"), (2_000, "2 km"), (5_000, "5 km"),
-        (10_000, "10 km"), (20_000, "20 km"), (50_000, "50 km"),
-        (100_000, "100 km"), (200_000, "200 km"), (500_000, "500 km"),
-        (1_000_000, "1000 km"), (2_000_000, "2000 km"), (5_000_000, "5000 km"),
-    ]
-
-    // Target bar width range (points)
-    private static let minBarWidth: CGFloat = 50
-    private static let maxBarWidth: CGFloat = 120
-
-    // 1 degree latitude ≈ 111,320 meters
-    private static let metersPerDegree: Double = 111_320
-
-    private var scaleInfo: (barWidth: CGFloat, label: String) {
-        // Approximate screen height in points (iPhone)
-        let screenHeight: Double = 800
-
-        // Meters per screen point at current zoom
-        let totalMeters = latitudeDelta * Self.metersPerDegree
-        let metersPerPoint = totalMeters / screenHeight
-
-        // Find the "nice" distance whose bar width falls in our target range
-        for entry in Self.niceDistances {
-            let barWidth = CGFloat(entry.meters / metersPerPoint)
-            if barWidth >= Self.minBarWidth && barWidth <= Self.maxBarWidth {
-                return (barWidth, entry.label)
-            }
-        }
-
-        // Fallback: pick the closest one
-        let target: CGFloat = 80
-        var best = Self.niceDistances[0]
-        var bestDiff: CGFloat = .infinity
-        for entry in Self.niceDistances {
-            let barWidth = CGFloat(entry.meters / metersPerPoint)
-            let diff = abs(barWidth - target)
-            if diff < bestDiff {
-                bestDiff = diff
-                best = entry
-            }
-        }
-        let barWidth = CGFloat(best.meters / metersPerPoint)
-        return (max(30, min(barWidth, 150)), best.label)
-    }
-
-    var body: some View {
-        let info = scaleInfo
-        VStack(alignment: .leading, spacing: 2) {
-            // Scale bar with end caps
-            HStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.cxText.opacity(0.8))
-                    .frame(width: 1, height: 5)
-                Rectangle()
-                    .fill(Color.cxText.opacity(0.8))
-                    .frame(width: info.barWidth, height: 1.5)
-                Rectangle()
-                    .fill(Color.cxText.opacity(0.8))
-                    .frame(width: 1, height: 5)
-            }
-            Text(info.label)
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.cxText.opacity(0.8))
-        }
-    }
-}
 
 #Preview {
     ConfluxMapView()
