@@ -152,7 +152,7 @@ struct ConfluxMapView: View {
             if let coord = locationManager.lastLocation {
                 position = .region(MKCoordinateRegion(
                     center: coord,
-                    span: MKCoordinateSpan(latitudeDelta: 5, longitudeDelta: 5)
+                    span: MKCoordinateSpan(latitudeDelta: 18, longitudeDelta: 18)
                 ))
             }
         }
