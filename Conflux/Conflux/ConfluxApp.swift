@@ -1,14 +1,10 @@
 import SwiftUI
-import Firebase
-import FirebaseInAppMessaging
 
 @main
 struct ConfluxApp: App {
     @State private var authManager = AuthManager()
 
     init() {
-        FirebaseApp.configure()
-
         // Palantir Gotham: force dark UIKit appearances
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
