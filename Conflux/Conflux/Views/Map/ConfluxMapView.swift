@@ -3,6 +3,7 @@ import MapKit
 
 struct ConfluxMapView: View {
     @Environment(AuthManager.self) private var authManager
+    @Environment(AppLocationManager.self) private var locationManager
 
     @State private var events: [Event] = []
     @State private var selectedEvent: Event?
@@ -30,10 +31,24 @@ struct ConfluxMapView: View {
         ZStack(alignment: .top) {
             // Map - dark satellite imagery
             Map(position: $position) {
+                // Event pins
                 ForEach(filteredEvents) { event in
                     Annotation("", coordinate: event.coordinate, anchor: .center) {
                         EventPinView(event: event)
                             .onTapGesture { selectedEvent = event }
+                    }
+                }
+
+                // User location + alert radius
+                if let userCoord = locationManager.lastLocation {
+                    // Alert radius circle (50km default)
+                    MapCircle(center: userCoord, radius: 50_000)
+                        .foregroundStyle(Color.cxAccent.opacity(0.06))
+                        .stroke(Color.cxAccent.opacity(0.25), lineWidth: 1)
+
+                    // User location pin
+                    Annotation("", coordinate: userCoord, anchor: .center) {
+                        UserLocationPin()
                     }
                 }
             }
@@ -178,6 +193,44 @@ struct ConfluxMapView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+// MARK: - User Location Pin
+
+struct UserLocationPin: View {
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            // Outer pulse ring
+            Circle()
+                .stroke(Color.cxAccent.opacity(0.3), lineWidth: 1.5)
+                .frame(width: 32, height: 32)
+                .scaleEffect(isPulsing ? 1.4 : 1.0)
+                .opacity(isPulsing ? 0 : 0.6)
+
+            // Middle glow
+            Circle()
+                .fill(Color.cxAccent.opacity(0.15))
+                .frame(width: 24, height: 24)
+
+            // Inner dot
+            Circle()
+                .fill(Color.cxAccent)
+                .frame(width: 10, height: 10)
+                .shadow(color: .cxAccent.opacity(0.6), radius: 6)
+
+            // Center white dot
+            Circle()
+                .fill(.white)
+                .frame(width: 4, height: 4)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: false)) {
+                isPulsing = true
+            }
+        }
     }
 }
 
