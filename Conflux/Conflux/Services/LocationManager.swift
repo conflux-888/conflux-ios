@@ -22,7 +22,12 @@ class AppLocationManager: NSObject, CLLocationManagerDelegate {
 
     func startMonitoring(token: String) {
         self.token = token
-        manager.startMonitoringSignificantLocationChanges()
+        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            manager.requestLocation()
+            manager.startMonitoringSignificantLocationChanges()
+        } else {
+            requestPermission()
+        }
     }
 
     func stopMonitoring() {
