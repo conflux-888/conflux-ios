@@ -18,6 +18,7 @@ struct ConfluxMapView: View {
             span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
         )
     )
+    @State private var currentSpan: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
 
     var filteredEvents: [Event] {
         events.filter { event in
@@ -53,6 +54,9 @@ struct ConfluxMapView: View {
                 }
             }
             .mapStyle(.imagery(elevation: .flat))
+            .onMapCameraChange { context in
+                currentSpan = context.region.span
+            }
             .ignoresSafeArea(edges: .all)
 
             // Top overlay
@@ -63,9 +67,14 @@ struct ConfluxMapView: View {
 
                 Spacer()
 
-                // My location button
-                HStack {
+                // Bottom controls: scale bar (left) + location button (right)
+                HStack(alignment: .bottom) {
+                    // Scale indicator
+                    MapScaleView(position: position)
+
                     Spacer()
+
+                    // My location button (Google Maps style)
                     if locationManager.lastLocation != nil {
                         Button {
                             if let coord = locationManager.lastLocation {
@@ -80,14 +89,13 @@ struct ConfluxMapView: View {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 16))
                                 .foregroundStyle(.cxAccent)
-                                .frame(width: 40, height: 40)
-                                .background(Color.cxSurface)
-                                .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                                .frame(width: 44, height: 44)
+                                .background(Color.cxSurface.opacity(0.95))
+                                .clipShape(Circle())
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
-                                        .stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
+                                    Circle().stroke(Color.cxBorder, lineWidth: CXConstants.borderWidth)
                                 )
-                                .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                                .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
                         }
                     }
                 }
@@ -357,6 +365,63 @@ struct StatBadge: View {
                 .foregroundStyle(.cxTextTertiary)
                 .tracking(0.5)
         }
+    }
+}
+
+// MARK: - Map Scale View
+
+struct MapScaleView: View {
+    let position: MapCameraPosition
+
+    private var scaleText: String {
+        guard let region = position.region else { return "" }
+        // 1 degree latitude ≈ 111km
+        let spanKm = region.span.latitudeDelta * 111.0
+        // Scale bar represents roughly 1/5 of visible area
+        let barKm = spanKm / 5.0
+
+        if barKm >= 1000 {
+            let rounded = roundToNice(barKm / 1000)
+            return "\(formatNumber(rounded)) km"
+        } else if barKm >= 1 {
+            let rounded = roundToNice(barKm)
+            return "\(formatNumber(rounded)) km"
+        } else {
+            let meters = barKm * 1000
+            let rounded = roundToNice(meters)
+            return "\(formatNumber(rounded)) m"
+        }
+    }
+
+    private func roundToNice(_ value: Double) -> Double {
+        let steps: [Double] = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+        return steps.last(where: { $0 <= value }) ?? steps.first!
+    }
+
+    private func formatNumber(_ value: Double) -> String {
+        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // Scale bar line
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.cxAccent)
+                    .frame(width: 60, height: 2)
+                Rectangle()
+                    .fill(Color.cxAccent)
+                    .frame(width: 1, height: 6)
+            }
+
+            Text(scaleText)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.cxText)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.cxBackgroundPure.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
     }
 }
 
