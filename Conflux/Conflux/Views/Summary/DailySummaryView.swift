@@ -6,40 +6,71 @@ struct DailySummaryView: View {
     @State private var summary: DailySummary?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var selectedDate: Date = Date()
+    @State private var dates: [Date] = []
+
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f
+    }()
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading && summary == nil {
-                    VStack(spacing: 12) {
-                        ProgressView()
-                            .tint(.cxAccent)
-                        Text("LOADING BRIEFING")
-                            .font(.cxData)
-                            .foregroundStyle(.cxTextSecondary)
-                            .tracking(1)
+            VStack(spacing: 0) {
+                // Date picker strip
+                DatePickerStrip(
+                    dates: dates,
+                    selectedDate: $selectedDate,
+                    onChange: { date in
+                        Task { await loadSummary(for: date) }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = errorMessage, summary == nil {
-                    ContentUnavailableView {
-                        Label("Briefing Unavailable", systemImage: "doc.text.magnifyingglass")
+                )
+                .background(Color.cxBackgroundPure)
+
+                Rectangle()
+                    .fill(Color.cxBorder)
+                    .frame(height: 1)
+
+                // Content
+                Group {
+                    if isLoading && summary == nil {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .tint(.cxAccent)
+                            Text("LOADING BRIEFING")
+                                .font(.cxData)
+                                .foregroundStyle(.cxTextSecondary)
+                                .tracking(1)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let error = errorMessage, summary == nil {
+                        ContentUnavailableView {
+                            Label("Briefing Unavailable", systemImage: "doc.text.magnifyingglass")
+                                .foregroundStyle(.cxAccent)
+                        } description: {
+                            Text(error)
+                                .foregroundStyle(.cxTextSecondary)
+                        } actions: {
+                            Button("Retry") {
+                                Task { await loadSummary(for: selectedDate) }
+                            }
                             .foregroundStyle(.cxAccent)
-                    } description: {
-                        Text(error)
-                            .foregroundStyle(.cxTextSecondary)
-                    } actions: {
-                        Button("Retry") { Task { await loadLatest() } }
-                            .foregroundStyle(.cxAccent)
+                        }
+                    } else if let summary {
+                        summaryContent(summary)
                     }
-                } else if let summary {
-                    summaryContent(summary)
                 }
             }
             .background(Color.cxBackground)
             .navigationTitle("INTEL BRIEFING")
             .navigationBarTitleDisplayMode(.inline)
             .tint(.cxAccent)
-            .task { await loadLatest() }
+            .task {
+                buildDates()
+                await loadSummary(for: selectedDate)
+            }
         }
     }
 
@@ -96,7 +127,7 @@ struct DailySummaryView: View {
                     .padding(.bottom, 24)
             }
         }
-        .refreshable { await loadLatest() }
+        .refreshable { await loadSummary(for: selectedDate) }
     }
 
     // MARK: - Section Header
@@ -148,21 +179,115 @@ struct DailySummaryView: View {
 
     // MARK: - Data
 
-    private func loadLatest() async {
+    private func buildDates() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        dates = (0..<7).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
+        selectedDate = today
+    }
+
+    private func loadSummary(for date: Date) async {
         guard let token = authManager.token else {
             errorMessage = "Authentication required. Please log in again."
             return
         }
         isLoading = true
         errorMessage = nil
+        summary = nil
+
+        let dateString = dateFormatter.string(from: date)
         do {
-            summary = try await APIService.shared.getLatestSummary(token: token)
+            summary = try await APIService.shared.getSummary(date: dateString, token: token)
+        } catch ServiceError.notFound {
+            errorMessage = "No briefing available for this date."
         } catch let error as ServiceError {
             errorMessage = error.errorDescription
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+// MARK: - Date Picker Strip
+
+struct DatePickerStrip: View {
+    let dates: [Date]
+    @Binding var selectedDate: Date
+    let onChange: (Date) -> Void
+
+    private let calendar = Calendar.current
+
+    private let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+
+    private let weekdayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f
+    }()
+
+    private let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+
+    private var isToday: (Date) -> Bool {
+        { calendar.isDateInToday($0) }
+    }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(dates.reversed(), id: \.self) { date in
+                        let selected = calendar.isDate(date, inSameDayAs: selectedDate)
+
+                        Button {
+                            selectedDate = date
+                            onChange(date)
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text(weekdayFormatter.string(from: date).uppercased())
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(selected ? .cxAccent : .cxTextTertiary)
+                                    .tracking(0.5)
+
+                                Text(dayFormatter.string(from: date))
+                                    .font(.cxMono)
+                                    .foregroundStyle(selected ? .cxAccent : .cxText)
+
+                                Text(monthFormatter.string(from: date).uppercased())
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(selected ? .cxAccent : .cxTextTertiary)
+                                    .tracking(0.5)
+                            }
+                            .frame(width: 44, height: 52)
+                            .background(selected ? Color.cxAccent.opacity(0.12) : Color.cxSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: CXConstants.cornerRadius))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: CXConstants.cornerRadius)
+                                    .stroke(
+                                        selected ? Color.cxAccent.opacity(0.5) : Color.cxBorder,
+                                        lineWidth: selected ? 1.5 : CXConstants.borderWidth
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .id(date)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+            .onAppear {
+                proxy.scrollTo(selectedDate, anchor: .trailing)
+            }
+        }
     }
 }
 
