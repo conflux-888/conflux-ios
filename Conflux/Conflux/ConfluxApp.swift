@@ -2,9 +2,12 @@ import SwiftUI
 
 @main
 struct ConfluxApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     @State private var authManager = AuthManager()
     @State private var notificationManager = NotificationManager()
     @State private var locationManager = AppLocationManager()
+    @State private var pushManager = PushManager()
 
     init() {
         // Palantir Gotham: force dark UIKit appearances
@@ -39,21 +42,26 @@ struct ConfluxApp: App {
                 .environment(authManager)
                 .environment(notificationManager)
                 .environment(locationManager)
+                .environment(pushManager)
                 .preferredColorScheme(.dark)
                 .onChange(of: authManager.isLoggedIn) { _, isLoggedIn in
                     if isLoggedIn, let token = authManager.token {
                         notificationManager.startPolling(token: token)
                         locationManager.requestPermission()
                         locationManager.startMonitoring(token: token)
+                        Task { await pushManager.requestPermissionAndRegister(authToken: token) }
                     } else {
                         notificationManager.clear()
                         locationManager.stopMonitoring()
+                        pushManager.clearOnLogout()
                     }
                 }
                 .onAppear {
+                    pushManager.bind(appDelegate)
                     if let token = authManager.token {
                         notificationManager.startPolling(token: token)
                         locationManager.startMonitoring(token: token)
+                        Task { await pushManager.requestPermissionAndRegister(authToken: token) }
                     }
                 }
         }

@@ -290,4 +290,29 @@ final class APIService {
         let (_, resp) = try await URLSession.shared.data(for: req)
         if (resp as? HTTPURLResponse)?.statusCode == 401 { throw ServiceError.unauthorized }
     }
+
+    // MARK: - Device Tokens (iOS Push)
+
+    func registerDeviceToken(token: String, env: String, bundleID: String, authToken: String) async throws {
+        struct Body: Encodable {
+            let token: String
+            let platform: String
+            let env: String
+            let bundle_id: String
+        }
+        let body = try JSONEncoder().encode(Body(token: token, platform: "ios", env: env, bundle_id: bundleID))
+        let req = try request(path: "/users/me/device-tokens", method: "POST", body: body, token: authToken)
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if status == 401 { throw ServiceError.unauthorized }
+        if status >= 400 { throw ServiceError.serverError("device token register failed (\(status))") }
+    }
+
+    func unregisterDeviceToken(token: String, authToken: String) async throws {
+        let req = try request(path: "/users/me/device-tokens/\(token)", method: "DELETE", token: authToken)
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if status == 401 { throw ServiceError.unauthorized }
+        if status == 404 { throw ServiceError.notFound }
+    }
 }
